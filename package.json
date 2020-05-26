@@ -19,16 +19,13 @@
     "url": "https://github.com/AugustoL/dxdao-snapshot/issues"
   },
   "homepage": "https://github.com/AugustoL/dxdao-snapshot#readme",
-  "devDependencies": {
-    "@openzeppelin/cli": "^2.8.2"
-  },
   "dependencies": {
     "@maticnetwork/eth-decoder": "0.0.2",
     "@openzeppelin/upgrades": "^2.8.0",
     "dotenv": "^8.2.0",
     "lodash": "^4.17.15",
     "truffle": "^5.1.26",
-    "truffle-hdwallet-provider": "^1.0.17",
     "web3": "^1.2.7"
-  }
+  },
+  "devDependencies": {}
 }

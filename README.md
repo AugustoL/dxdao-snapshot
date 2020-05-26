@@ -5,6 +5,12 @@
 npm install
 ```
 
+And configure your .env file with your Infura and Etherscan API keys.
+```
+KEY_INFURA_API_KEY="xxxx"
+KEY_ETHERSCAN="xxxx"
+```
+
 ## Commands
 
 With `npm start` it will use the default snapshot provided form the repository, get the transactions and generate the snapshot.
@@ -23,6 +29,10 @@ npm run transactions
 ```
 npm run snapshot
 ```
+
+## Snapshot Viewer
+
+You can view, navigate and search in the snapshot file by using an online json viewer, https://jsoneditoronline.org/. Just import the `DXdaoSnapshot.json` file from your disk.
 
 ## Simulate Transactions
 
