@@ -197,7 +197,7 @@ async function main() {
     // TO DO: Add analysis of global constrains of each scheme
   
     schemesInfo[registeredSchemes[i]] = { 
-      name: schemes[registeredSchemes[i]].schema.contractName,
+      name: schemes[registeredSchemes[i]] ? schemes[registeredSchemes[i]].schema.contractName : 'UnregisteredSchema',
       paramsHash: scheme.paramsHash,
       permissions: permissions,
       activePeriods: activePeriods,
