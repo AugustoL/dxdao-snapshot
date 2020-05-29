@@ -184,16 +184,12 @@ async function main() {
       let txsApiService = await makeSynchronousRequest(
         _txsUriBuilder(_address, _fromBlock, _toBlock)
       )
-      console.log('total tx fetched from '+_apiServiceName+' api ',txsApiService.length)
-      let internalTxsApiService = await makeSynchronousRequest(
-        _internalTxsUriBuilder(_address, _fromBlock, _toBlock)
-      )
-      console.log('total internal tx fetched from '+_apiServiceName+' blockscout ',internalTxsApiService.length)
+      console.log('total tx for '+_address+' fetched from '+_apiServiceName+' api ',txsApiService.length)
       let txs = [];
       let internalTxs = [];
       for (var i = 0; i < txsApiService.length; i++) {
         let hash = _getHashFromApiServiceTx(txsApiService[i])
-        console.log('Getting tx info', hash, 'for address', _address)
+        //console.log('Getting '+_apiServiceName+' tx info', hash, 'for address', _address)
         await sleep(10);
         let txToPush = await web3.eth.getTransaction(hash);
         txToPush.receipt = await web3.eth.getTransactionReceipt(hash);
@@ -201,17 +197,24 @@ async function main() {
           txToPush.receipt.logs = logDecoder.decodeLogs(txToPush.receipt.logs)
         txs.push(txToPush);
       }
-      for (var i = 0; i < internalTxsApiService.length; i++) {
-        let hash = _getHashFromApiServiceTx(internalTxsApiService[i])
-        console.log('Getting internal tx info', hash, 'for address', _address)
-        await sleep(10);
-        let internalTxToPush = await web3.eth.getTransactionReceipt(hash);
-        if (internalTxToPush.logs)
-          internalTxToPush.logs = logDecoder.decodeLogs(internalTxToPush.logs)
-        internalTxs.push(internalTxToPush);
+      if(_apiServiceName=='etherscan'){
+        //TODO: Disable internal tx fetching until etherscan difference resolved
+        let internalTxsApiService = await makeSynchronousRequest(
+          _internalTxsUriBuilder(_address, _fromBlock, _toBlock)
+        )
+        console.log('Total internal tx for '+_address+' fetched from '+_apiServiceName+': ',internalTxsApiService.length)
+        for (var i = 0; i < internalTxsApiService.length; i++) {
+          let hash = _getHashFromApiServiceTx(internalTxsApiService[i])
+          //console.log('Getting '+_apiServiceName+' internal tx info', hash, 'for address', _address)
+          await sleep(10);
+          let internalTxToPush = await web3.eth.getTransactionReceipt(hash);
+          if (internalTxToPush.logs)
+            internalTxToPush.logs = logDecoder.decodeLogs(internalTxToPush.logs)
+          internalTxs.push(internalTxToPush);
+        }
       }
 
-      console.log('Total transactions:',txs.length,'; Total internal transactions:', internalTxs.length);
+      console.log('API Service:',_apiServiceName,'Total transactions:',txs.length,'; Total internal transactions:', internalTxs.length);
       return { txs, internalTxs };
     }
   }
@@ -221,7 +224,7 @@ async function main() {
   }
 
   function etherscanTxsUriBuilder(_address, _fromBlock, _toBlock){
-    return 'http://api.etherscan.io/api?module=account&action=txlist&address='
+    return 'https://api.etherscan.io/api?module=account&action=txlist&address='
             +_address
             +'&startblock='+_fromBlock
             +'&endblock='+_toBlock
@@ -230,7 +233,7 @@ async function main() {
   }
 
   function etherscanInternalTxsUriBuilder(_address, _fromBlock, _toBlock){
-    return 'http://api.etherscan.io/api?module=account&action=txlistinternal&address='
+    return 'https://api.etherscan.io/api?module=account&action=txlistinternal&address='
             +_address
             +'&startblock='+_fromBlock
             +'&endblock='+_toBlock
@@ -261,6 +264,29 @@ async function main() {
             +'&sort=asc'
   }
 
+  function getTransactionsMultiApiWithCheckComposer (
+    _txApiServices
+  ) {
+    return async (_address,_fromBlock,_toBlock) => {
+      let transactionsFetchedFromEachApiService = await Promise.all(
+        _txApiServices.map((func)=>func(_address,_fromBlock,_toBlock))
+      )
+      console.log("Cross checking tx...")
+      let txsFromFirstApiService = transactionsFetchedFromEachApiService[0].txs;
+      //TODO: Add checking for internal tx once difference between etherscan and blockscout resolved
+      transactionsFetchedFromEachApiService.forEach((transactionsFetched)=>{
+        if(transactionsFetched.txs.length !== txsFromFirstApiService.length )
+          throw new Exception("Number of transactions fetched differed between Api services.",transactionsFetched.txs.length,'vs',txsFromFirstApiService.length)
+        transactionsFetched.txs.forEach((tx,index)=>{
+          if(tx.hash !== txsFromFirstApiService[index].hash)
+            throw new Exception("Tx hash between api service providers differed.",tx.hash,'vs',txsFromFirstApiService[index].hash)
+        })
+      })
+      console.log("Cross check passed.\n")
+      return transactionsFetchedFromEachApiService[0]
+    }
+  }
+
   let getBlockscoutTransactions = getTransactionsComposer(
     blockscoutTxsUriBuilder,
     blockscoutInternalTxsUriBuilder,
@@ -275,29 +301,31 @@ async function main() {
     "etherscan"
   )
 
+  let getTransactions = getTransactionsMultiApiWithCheckComposer([getEtherscanTransactions,getBlockscoutTransactions])
+
   let transactionsFetched;
   console.log('Getting txs from controller..');
-  transactionsFetched = await getEtherscanTransactions(dxController.address, fromBlock, toBlock);
+  transactionsFetched = await getTransactions(dxController.address, fromBlock, toBlock);
   DXdaoSnapshot.controller.txs = DXdaoSnapshot.controller.txs.concat(transactionsFetched.txs);
   DXdaoSnapshot.controller.internalTxs = DXdaoSnapshot.controller.internalTxs.concat(transactionsFetched.internalTxs);
 
   console.log('Getting txs from avatar..')
-  transactionsFetched = await getEtherscanTransactions(dxAvatar.address, fromBlock, toBlock);
+  transactionsFetched = await getTransactions(dxAvatar.address, fromBlock, toBlock);
   DXdaoSnapshot.avatar.txs = DXdaoSnapshot.avatar.txs.concat(transactionsFetched.txs)
   DXdaoSnapshot.avatar.internalTxs = DXdaoSnapshot.avatar.internalTxs.concat(transactionsFetched.internalTxs)
 
   console.log('Getting txs from token..')
-  transactionsFetched = await getEtherscanTransactions(dxToken.address, fromBlock, toBlock);
+  transactionsFetched = await getTransactions(dxToken.address, fromBlock, toBlock);
   DXdaoSnapshot.token.txs = DXdaoSnapshot.token.txs.concat(transactionsFetched.txs)
   DXdaoSnapshot.token.internalTxs = DXdaoSnapshot.token.internalTxs.concat(transactionsFetched.internalTxs)
 
   console.log('Getting txs from reputation..')
-  transactionsFetched = await getEtherscanTransactions(dxReputation.address, fromBlock, toBlock);
+  transactionsFetched = await getTransactions(dxReputation.address, fromBlock, toBlock);
   DXdaoSnapshot.reputation.txs = DXdaoSnapshot.reputation.txs.concat(transactionsFetched.txs)
   DXdaoSnapshot.reputation.internalTxs = DXdaoSnapshot.reputation.internalTxs.concat(transactionsFetched.internalTxs)
 
   console.log('Getting txs from genesisProtocol..')
-  transactionsFetched = await getEtherscanTransactions(genesisProtocol.address, fromBlock, toBlock);
+  transactionsFetched = await getTransactions(genesisProtocol.address, fromBlock, toBlock);
   DXdaoSnapshot.genesisProtocol.txs = DXdaoSnapshot.genesisProtocol.txs.concat(transactionsFetched.txs)
   DXdaoSnapshot.genesisProtocol.internalTxs = DXdaoSnapshot.genesisProtocol.internalTxs.concat(transactionsFetched.internalTxs)
 
@@ -327,7 +355,7 @@ async function main() {
     console.log('Getting txs from scheme', schemeAddress);
     await sleep(30000);
     if (schemes.hasOwnProperty(schemeAddress)) {
-      transactionsFetched = await getEtherscanTransactions(schemeAddress, fromBlock, toBlock);
+      transactionsFetched = await getTransactions(schemeAddress, fromBlock, toBlock);
       if (!DXdaoSnapshot.schemes[schemeAddress])
         DXdaoSnapshot.schemes[schemeAddress] = { txs: [], internalTxs: [], events: [] };
       DXdaoSnapshot.schemes[schemeAddress].txs = DXdaoSnapshot.token.txs.concat(transactionsFetched.txs)
