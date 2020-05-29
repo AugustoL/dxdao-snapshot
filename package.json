@@ -6,7 +6,7 @@
   "scripts": {
     "transactions": "node scripts/get-transactions.js -network mainnet -fast",
     "snapshot": "node scripts/build-snapshot.js -network mainnet",
-    "compile": "NODE_OPTIONS=--max-old-space-size=4096 npx truffle compile",
+    "compile": "cross-env NODE_OPTIONS=--max-old-space-size=4096 npx truffle compile",
     "start": "npm run compile && npm run transactions && npm run snapshot"
   },
   "repository": {
@@ -22,6 +22,7 @@
   "dependencies": {
     "@maticnetwork/eth-decoder": "0.0.2",
     "@openzeppelin/upgrades": "^2.8.0",
+    "cross-env": "^7.0.2",
     "dotenv": "^8.2.0",
     "lodash": "^4.17.15",
     "truffle": "^5.1.26",
