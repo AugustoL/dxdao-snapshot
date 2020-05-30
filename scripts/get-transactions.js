@@ -262,7 +262,7 @@ async function main() {
       )
       let txs = await Promise.all(
         txHashes.map(async (hash,index)=>{
-          await sleep(100*index);
+          await sleep(50*index);
           console.log('Getting tx ', hash, 'for address', _address)
           let txToPush = await web3.eth.getTransaction(hash);
           txToPush.receipt = await web3.eth.getTransactionReceipt(hash);
@@ -273,7 +273,7 @@ async function main() {
       )
       let internalTxs = await Promise.all(
         internalTxHashes.map(async (hash,index)=>{
-          await sleep(100*index);
+          await sleep(50*index);
           console.log('Getting internal tx ', hash, 'for address', _address)
           let internalTxToPush = await web3.eth.getTransactionReceipt(hash);
           if (internalTxToPush.logs)
