@@ -136,7 +136,7 @@ async function main() {
 
   let fromBlock = DXdaoSnapshot.toBlock + 1;
 
-  if (reset){
+  if (reset) {
     fromBlock = 7850000;
     DXdaoSnapshot.fromBlock = fromBlock;
   }
@@ -147,7 +147,8 @@ async function main() {
 
   async function makeSynchronousRequest(url) {
     let protocol = http;
-    if(url.substr(0,5)==='https') protocol = https
+    if (url.substr(0,5)==='https')
+      protocol = https
   	try {
   		let http_promise = new Promise((resolve, reject) => {
     		protocol.get(url, (response) => {
@@ -174,18 +175,12 @@ async function main() {
   	}
   }
 
-  async function asyncForEach(array, callback) {
-    for (let index = 0; index < array.length; index++) {
-      await callback(array[index], index, array);
-    }
-  }
-
   function getTransactionHashesComposer(
     _txsUriBuilder,
     _internalTxsUriBuilder,
     _getHashFromApiServiceTx,
     _apiServiceName //for logging only
-  ){
+  ) {
     return async (_address, _fromBlock, _toBlock) => {
       let txsFromApiService = await makeSynchronousRequest(
         _txsUriBuilder(_address, _fromBlock, _toBlock)
@@ -201,52 +196,54 @@ async function main() {
     }
   }
 
-  function etherscanGetHashFromApiServiceTx(tx){
+  function etherscanGetHashFromApiServiceTx(tx) {
     return tx.hash
   }
 
-  function etherscanTxsUriBuilder(_address, _fromBlock, _toBlock){
+  function etherscanTxsUriBuilder(_address, _fromBlock, _toBlock) {
     return 'https://api.etherscan.io/api?module=account&action=txlist&address='
-            +_address
-            +'&startblock='+_fromBlock
-            +'&endblock='+_toBlock
-            +'&sort=asc&apikey='
-            +EtherscanAPIToken
+      +_address
+      +'&startblock='+_fromBlock
+      +'&endblock='+_toBlock
+      +'&sort=asc&apikey='
+      +EtherscanAPIToken
   }
 
-  function etherscanInternalTxsUriBuilder(_address, _fromBlock, _toBlock){
+  function etherscanInternalTxsUriBuilder(_address, _fromBlock, _toBlock) {
     return 'https://api.etherscan.io/api?module=account&action=txlistinternal&address='
-            +_address
-            +'&startblock='+_fromBlock
-            +'&endblock='+_toBlock
-            +'&sort=asc&apikey='
-            +EtherscanAPIToken
+      +_address
+      +'&startblock='+_fromBlock
+      +'&endblock='+_toBlock
+      +'&sort=asc&apikey='
+      +EtherscanAPIToken
   }
 
-  function blockscoutGetHashFromApiServiceTx(tx){
-    if(typeof(tx.hash)!=='undefined') return tx.hash
-    if(typeof(tx.transactionHash)!=='undefined') return tx.transactionHash
+  function blockscoutGetHashFromApiServiceTx(tx) {
+    if (typeof(tx.hash)!=='undefined')
+      return tx.hash
+    if (typeof(tx.transactionHash)!=='undefined')
+      return tx.transactionHash
     console.log('Failed tx: ',tx)
     throw 'Neither tx.hash nor tx.transactionHash found in blockscout tx.'
   }
 
-  function blockscoutTxsUriBuilder(_address,_fromBlock,_toBlock){
+  function blockscoutTxsUriBuilder(_address, _fromBlock, _toBlock) {
     return 'https://blockscout.com/eth/mainnet/api?module=account&action=txlist&address='
-            +_address
-            +'&startblock='+_fromBlock
-            +'&endblock='+_toBlock
-            +'&sort=asc'
+      +_address
+      +'&startblock='+_fromBlock
+      +'&endblock='+_toBlock
+      +'&sort=asc'
   }
 
-  function blockscoutInternalTxsUriBuilder(_address,_fromBlock,_toBlock){
+  function blockscoutInternalTxsUriBuilder(_address, _fromBlock, _toBlock) {
     return 'https://blockscout.com/eth/mainnet/api?module=account&action=txlistinternal&address='
-            +_address
-            +'&startblock='+_fromBlock
-            +'&endblock='+_toBlock
-            +'&sort=asc'
+      +_address
+      +'&startblock='+_fromBlock
+      +'&endblock='+_toBlock
+      +'&sort=asc'
   }
 
-  function getTransactionsMultiApiComposer (
+  function getTransactionsMultiApiComposer(
     _txHashApiServices
   ) {
     return async (_address,_fromBlock,_toBlock) => {
