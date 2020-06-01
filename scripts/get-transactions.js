@@ -160,7 +160,11 @@ async function main() {
 
     			response.on('end', () => {
     				let response_body = Buffer.concat(chunks_of_data);
-    				resolve(response_body.toString());
+    				resolve({
+              body: response_body.toString(),
+              type: response.headers['content-type'],
+              status: response.statusCode
+            });
     			});
 
     			response.on('error', (error) => {
@@ -168,7 +172,25 @@ async function main() {
     			});
     		});
     	});
-  		return JSON.parse(await http_promise).result;
+      let response = await http_promise
+      if(
+        (
+          response.type.startsWith("application/json") ||
+          response.type.startsWith("text/json") ||
+          response.type.startsWith("application/javascript")
+        ) && (
+          response.status == 200
+        )
+      )
+  		  return JSON.parse(response.body).result
+
+      console.log("Request failed.")
+      console.log("Response Status", response.status)
+      console.log("Response Type", response.type)
+      console.log("Response from was not json. Waiting 15s and retrying. URL:", url)
+      console.log("If this error continually occurs, may be due to too large of a block range for snapshot.")
+      await sleep(15000);
+      return await makeSynchronousRequest(url)
   	}
   	catch(error) {
   		console.error(error);
