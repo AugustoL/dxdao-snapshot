@@ -70,6 +70,11 @@ let DXdaoSnapshot;
 if (fs.existsSync('./DXdaoSnapshot.json') && !reset)
   DXdaoSnapshot = JSON.parse(fs.readFileSync('DXdaoSnapshot.json', 'utf-8'));
 
+let DXdaoTransactions;
+if (fs.existsSync('./DXdaoTransactions.json') && !reset)
+  DXdaoTransactions = JSON.parse(fs.readFileSync('DXdaoTransactions.json', 'utf-8'));
+
+
 async function main() {
   
   const fromBlock = DXdaoSnapshot.fromBlock;
@@ -83,17 +88,17 @@ async function main() {
     events: []
   };
   
-  history.txs = history.txs.concat(DXdaoSnapshot.controller.txs);
-  history.txs = history.txs.concat(DXdaoSnapshot.avatar.txs);
-  history.txs = history.txs.concat(DXdaoSnapshot.reputation.txs);
-  history.txs = history.txs.concat(DXdaoSnapshot.token.txs);
-  history.txs = history.txs.concat(DXdaoSnapshot.genesisProtocol.txs);
+  history.txs = history.txs.concat(DXdaoTransactions.controller.txs);
+  history.txs = history.txs.concat(DXdaoTransactions.avatar.txs);
+  history.txs = history.txs.concat(DXdaoTransactions.reputation.txs);
+  history.txs = history.txs.concat(DXdaoTransactions.token.txs);
+  history.txs = history.txs.concat(DXdaoTransactions.genesisProtocol.txs);
   
-  history.internalTxs = history.internalTxs.concat(DXdaoSnapshot.controller.internalTxs);
-  history.internalTxs = history.internalTxs.concat(DXdaoSnapshot.avatar.internalTxs);
-  history.internalTxs = history.internalTxs.concat(DXdaoSnapshot.reputation.internalTxs);
-  history.internalTxs = history.internalTxs.concat(DXdaoSnapshot.token.internalTxs);
-  history.internalTxs = history.internalTxs.concat(DXdaoSnapshot.genesisProtocol.internalTxs);
+  history.internalTxs = history.internalTxs.concat(DXdaoTransactions.controller.internalTxs);
+  history.internalTxs = history.internalTxs.concat(DXdaoTransactions.avatar.internalTxs);
+  history.internalTxs = history.internalTxs.concat(DXdaoTransactions.reputation.internalTxs);
+  history.internalTxs = history.internalTxs.concat(DXdaoTransactions.token.internalTxs);
+  history.internalTxs = history.internalTxs.concat(DXdaoTransactions.genesisProtocol.internalTxs);
   
   history.events = history.events.concat(DXdaoSnapshot.controller.events);
   history.events = history.events.concat(DXdaoSnapshot.avatar.events);
@@ -103,8 +108,8 @@ async function main() {
   
   for (var schemeAddress in DXdaoSnapshot.schemes) {
     if (DXdaoSnapshot.schemes.hasOwnProperty(schemeAddress)) {
-      history.txs = history.txs.concat(DXdaoSnapshot.schemes[schemeAddress].txs);
-      history.internalTxs = history.internalTxs.concat(DXdaoSnapshot.schemes[schemeAddress].internalTxs);
+      history.txs = history.txs.concat(DXdaoTransactions.schemes[schemeAddress].txs);
+      history.internalTxs = history.internalTxs.concat(DXdaoTransactions.schemes[schemeAddress].internalTxs);
       history.events = history.events.concat(DXdaoSnapshot.schemes[schemeAddress].events);
     }
   }
@@ -141,9 +146,9 @@ async function main() {
   let schemesActivePeriods = [];
   let schemeAddedBlock = {};
   
-  console.log('Registered scheme in controller constructor', web3.utils.toChecksumAddress(DXdaoSnapshot.controller.txs[0].from))
-  registeredSchemes.push(web3.utils.toChecksumAddress(DXdaoSnapshot.controller.txs[0].from));
-  schemeAddedBlock[web3.utils.toChecksumAddress(DXdaoSnapshot.controller.txs[0].from)] = DXdaoSnapshot.controller.txs[0].blockNumber;
+  console.log('Registered scheme in controller constructor', web3.utils.toChecksumAddress(DXdaoTransactions.controller.txs[0].from))
+  registeredSchemes.push(web3.utils.toChecksumAddress(DXdaoTransactions.controller.txs[0].from));
+  schemeAddedBlock[web3.utils.toChecksumAddress(DXdaoTransactions.controller.txs[0].from)] = DXdaoTransactions.controller.txs[0].blockNumber;
   
   history.events.forEach((historyEvent) => {
     if (historyEvent.event == 'RegisterScheme') {

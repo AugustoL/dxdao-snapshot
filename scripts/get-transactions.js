@@ -119,11 +119,46 @@ const DXdaoSnapshotTemplate = {
   },
   schemes: {}
 };
+const DXdaoTransactionsTemplate = {
+  fromBlock: 0,
+  toBlock: 0,
+  controller: {
+    txs: [],
+    internalTxs: [],
+    events: []
+  },
+  avatar: {
+    txs: [],
+    internalTxs: [],
+    events: []
+  },
+  reputation: {
+    txs: [],
+    internalTxs: [],
+    events: []
+  },
+  token: {
+    txs: [],
+    internalTxs: [],
+    events: []
+  },
+  genesisProtocol: {
+    txs: [],
+    internalTxs: [],
+    events: []
+  },
+  schemes: {}
+};
 
-// Fecth existent snapshot
+// Fecth existent snapshot & transaction 
 let DXdaoSnapshot = DXdaoSnapshotTemplate;
+let DXdaoTransactions = DXdaoTransactionsTemplate;
+
 if (fs.existsSync('./DXdaoSnapshot.json') && !reset)
   DXdaoSnapshot = Object.assign(DXdaoSnapshotTemplate, JSON.parse(fs.readFileSync('DXdaoSnapshot.json', 'utf-8')));
+
+if (fs.existsSync('./DXdaoTransactions.json') && !reset)
+  DXdaoTransactions = Object.assign(DXdaoTransactionsTemplate, JSON.parse(fs.readFileSync('DXdaoTransactions.json', 'utf-8')));
 
 async function main() {
 
@@ -137,9 +172,11 @@ async function main() {
   if (reset){
     fromBlock = 7850000;
     DXdaoSnapshot.fromBlock = fromBlock;
+    DXdaoTransactions.fromBlock = fromBlock;
   }
   
   DXdaoSnapshot.toBlock = toBlock;
+  DXdaoTransactions.toBlock = toBlock;
   
   console.log('Getting from block', fromBlock, 'to block', toBlock);
 
@@ -214,28 +251,28 @@ async function main() {
   let transactionsFetched;
   console.log('Getting txs from controller..');
   transactionsFetched = await getTransactions(dxController.address, fromBlock, toBlock);
-  DXdaoSnapshot.controller.txs = DXdaoSnapshot.controller.txs.concat(transactionsFetched.txs);
-  DXdaoSnapshot.controller.internalTxs = DXdaoSnapshot.controller.internalTxs.concat(transactionsFetched.internalTxs);
+  DXdaoTransactions.controller.txs = DXdaoTransactions.controller.txs.concat(transactionsFetched.txs);
+  DXdaoTransactions.controller.internalTxs = DXdaoTransactions.controller.internalTxs.concat(transactionsFetched.internalTxs);
   
   console.log('Getting txs from avatar..')
   transactionsFetched = await getTransactions(dxAvatar.address, fromBlock, toBlock);
-  DXdaoSnapshot.avatar.txs = DXdaoSnapshot.avatar.txs.concat(transactionsFetched.txs)
-  DXdaoSnapshot.avatar.internalTxs = DXdaoSnapshot.avatar.internalTxs.concat(transactionsFetched.internalTxs)
+  DXdaoTransactions.avatar.txs = DXdaoTransactions.avatar.txs.concat(transactionsFetched.txs)
+  DXdaoTransactions.avatar.internalTxs = DXdaoTransactions.avatar.internalTxs.concat(transactionsFetched.internalTxs)
   
   console.log('Getting txs from token..')
   transactionsFetched = await getTransactions(dxToken.address, fromBlock, toBlock);
-  DXdaoSnapshot.token.txs = DXdaoSnapshot.token.txs.concat(transactionsFetched.txs)
-  DXdaoSnapshot.token.internalTxs = DXdaoSnapshot.token.internalTxs.concat(transactionsFetched.internalTxs)
+  DXdaoTransactions.token.txs = DXdaoTransactions.token.txs.concat(transactionsFetched.txs)
+  DXdaoTransactions.token.internalTxs = DXdaoTransactions.token.internalTxs.concat(transactionsFetched.internalTxs)
   
   console.log('Getting txs from reputation..')
   transactionsFetched = await getTransactions(dxReputation.address, fromBlock, toBlock);
-  DXdaoSnapshot.reputation.txs = DXdaoSnapshot.reputation.txs.concat(transactionsFetched.txs)
-  DXdaoSnapshot.reputation.internalTxs = DXdaoSnapshot.reputation.internalTxs.concat(transactionsFetched.internalTxs)
+  DXdaoTransactions.reputation.txs = DXdaoTransactions.reputation.txs.concat(transactionsFetched.txs)
+  DXdaoTransactions.reputation.internalTxs = DXdaoTransactions.reputation.internalTxs.concat(transactionsFetched.internalTxs)
   
   console.log('Getting txs from genesisProtocol..')
   transactionsFetched = await getTransactions(genesisProtocol.address, fromBlock, toBlock);
-  DXdaoSnapshot.genesisProtocol.txs = DXdaoSnapshot.genesisProtocol.txs.concat(transactionsFetched.txs)
-  DXdaoSnapshot.genesisProtocol.internalTxs = DXdaoSnapshot.genesisProtocol.internalTxs.concat(transactionsFetched.internalTxs)
+  DXdaoTransactions.genesisProtocol.txs = DXdaoTransactions.genesisProtocol.txs.concat(transactionsFetched.txs)
+  DXdaoTransactions.genesisProtocol.internalTxs = DXdaoTransactions.genesisProtocol.internalTxs.concat(transactionsFetched.internalTxs)
   
   console.log('Getting events info for controller')
   DXdaoSnapshot.controller.events = DXdaoSnapshot.controller.events.concat( await dxController.getPastEvents(
@@ -266,8 +303,10 @@ async function main() {
       transactionsFetched = await getTransactions(schemeAddress, fromBlock, toBlock);
       if (!DXdaoSnapshot.schemes[schemeAddress])
         DXdaoSnapshot.schemes[schemeAddress] = { txs: [], internalTxs: [], events: [] };
-      DXdaoSnapshot.schemes[schemeAddress].txs = DXdaoSnapshot.token.txs.concat(transactionsFetched.txs)
-      DXdaoSnapshot.schemes[schemeAddress].internalTxs = DXdaoSnapshot.token.internalTxs.concat(transactionsFetched.internalTxs)
+        DXdaoTransactions.schemes[schemeAddress] = { txs: [], internalTxs: [], events: [] };
+      
+      DXdaoTransactions.schemes[schemeAddress].txs = DXdaoTransactions.token.txs.concat(transactionsFetched.txs)
+      DXdaoTransactions.schemes[schemeAddress].internalTxs = DXdaoTransactions.token.internalTxs.concat(transactionsFetched.internalTxs)
       DXdaoSnapshot.schemes[schemeAddress].events = DXdaoSnapshot.schemes[schemeAddress].events.concat(
         await schemes[schemeAddress].getPastEvents(
         'allEvents', {fromBlock: fromBlock, toBlock: toBlock}
@@ -280,6 +319,7 @@ async function main() {
   }
   
   fs.writeFileSync('DXdaoSnapshot.json', JSON.stringify(DXdaoSnapshot, null, 2), {encoding:'utf8',flag:'w'});
+  fs.writeFileSync('DXdaoTransactions.json', JSON.stringify(DXdaoTransactions, null, 2), {encoding:'utf8',flag:'w'});
 } 
 
 Promise.all([main()]).then(process.exit);
