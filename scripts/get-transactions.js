@@ -119,6 +119,7 @@ const DXdaoSnapshotTemplate = {
   },
   schemes: {}
 };
+
 const DXdaoTransactionsTemplate = {
   fromBlock: 0,
   toBlock: 0,
