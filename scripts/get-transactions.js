@@ -136,6 +136,7 @@ const DXdaoTransactionsTemplate = {
   schemes: {}
 };
 
+
 // Fecth existent snapshot & transaction 
 let DXdaoSnapshot = DXdaoSnapshotTemplate;
 let DXdaoTransactions = DXdaoTransactionsTemplate;
