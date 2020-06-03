@@ -93,28 +93,18 @@ const DXdaoSnapshotTemplate = {
   fromBlock: 0,
   toBlock: 0,
   controller: {
-    txs: [],
-    internalTxs: [],
     events: []
   },
   avatar: {
-    txs: [],
-    internalTxs: [],
     events: []
   },
   reputation: {
-    txs: [],
-    internalTxs: [],
     events: []
   },
   token: {
-    txs: [],
-    internalTxs: [],
     events: []
   },
   genesisProtocol: {
-    txs: [],
-    internalTxs: [],
     events: []
   },
   schemes: {}
@@ -125,28 +115,23 @@ const DXdaoTransactionsTemplate = {
   toBlock: 0,
   controller: {
     txs: [],
-    internalTxs: [],
-    events: []
+    internalTxs: []
   },
   avatar: {
     txs: [],
-    internalTxs: [],
-    events: []
+    internalTxs: []
   },
   reputation: {
     txs: [],
-    internalTxs: [],
-    events: []
+    internalTxs: []
   },
   token: {
     txs: [],
-    internalTxs: [],
-    events: []
+    internalTxs: []
   },
   genesisProtocol: {
     txs: [],
-    internalTxs: [],
-    events: []
+    internalTxs: []
   },
   schemes: {}
 };
@@ -303,8 +288,8 @@ async function main() {
     if (schemes.hasOwnProperty(schemeAddress)) {
       transactionsFetched = await getTransactions(schemeAddress, fromBlock, toBlock);
       if (!DXdaoSnapshot.schemes[schemeAddress])
-        DXdaoSnapshot.schemes[schemeAddress] = { txs: [], internalTxs: [], events: [] };
-        DXdaoTransactions.schemes[schemeAddress] = { txs: [], internalTxs: [], events: [] };
+        DXdaoSnapshot.schemes[schemeAddress] = { events: [] };
+        DXdaoTransactions.schemes[schemeAddress] = { txs: [], internalTxs: [] };
       
       DXdaoTransactions.schemes[schemeAddress].txs = DXdaoTransactions.token.txs.concat(transactionsFetched.txs)
       DXdaoTransactions.schemes[schemeAddress].internalTxs = DXdaoTransactions.token.internalTxs.concat(transactionsFetched.internalTxs)
