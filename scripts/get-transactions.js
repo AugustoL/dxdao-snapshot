@@ -89,60 +89,39 @@ schemes[contracts.schemes.EnsRegistrarScheme] = EnsRegistrarScheme.at(contracts.
 schemes[contracts.schemes.EnsRegistryScheme] = EnsRegistryScheme.at(contracts.schemes.EnsRegistryScheme);  
 schemes[contracts.schemes.TokenRegistry] = TokenRegistry.at(contracts.schemes.TokenRegistry);  
 
-const DXdaoSnapshotTemplate = {
-  fromBlock: 0,
-  toBlock: 0,
-  controller: {
-    events: []
-  },
-  avatar: {
-    events: []
-  },
-  reputation: {
-    events: []
-  },
-  token: {
-    events: []
-  },
-  genesisProtocol: {
-    events: []
-  },
-  schemes: {}
-};
-
 const DXdaoTransactionsTemplate = {
   fromBlock: 0,
   toBlock: 0,
   controller: {
     txs: [],
-    internalTxs: []
+    internalTxs: [],
+    events: []
   },
   avatar: {
     txs: [],
-    internalTxs: []
+    internalTxs: [],
+    events: []
   },
   reputation: {
     txs: [],
-    internalTxs: []
+    internalTxs: [],
+    events: []
   },
   token: {
     txs: [],
-    internalTxs: []
+    internalTxs: [],
+    events: []
   },
   genesisProtocol: {
     txs: [],
-    internalTxs: []
+    internalTxs: [],
+    events: []
   },
   schemes: {}
 };
 
-
 // Fecth existent snapshot & transaction 
-let DXdaoSnapshot = DXdaoSnapshotTemplate;
 let DXdaoTransactions = DXdaoTransactionsTemplate;
-
-if (fs.existsSync('./DXdaoSnapshot.json') && !reset)
-  DXdaoSnapshot = Object.assign(DXdaoSnapshotTemplate, JSON.parse(fs.readFileSync('DXdaoSnapshot.json', 'utf-8')));
 
 if (fs.existsSync('./DXdaoTransactions.json') && !reset)
   DXdaoTransactions = Object.assign(DXdaoTransactionsTemplate, JSON.parse(fs.readFileSync('DXdaoTransactions.json', 'utf-8')));
@@ -154,15 +133,13 @@ async function main() {
   if (toBlock == 'latest')
     toBlock = (await web3.eth.getBlock('latest')).number;
     
-  let fromBlock = DXdaoSnapshot.toBlock + 1;
+  let fromBlock = DXdaoTransactions.toBlock + 1;
 
   if (reset){
     fromBlock = 7850000;
-    DXdaoSnapshot.fromBlock = fromBlock;
     DXdaoTransactions.fromBlock = fromBlock;
   }
   
-  DXdaoSnapshot.toBlock = toBlock;
   DXdaoTransactions.toBlock = toBlock;
   
   console.log('Getting from block', fromBlock, 'to block', toBlock);
@@ -262,23 +239,23 @@ async function main() {
   DXdaoTransactions.genesisProtocol.internalTxs = DXdaoTransactions.genesisProtocol.internalTxs.concat(transactionsFetched.internalTxs)
   
   console.log('Getting events info for controller')
-  DXdaoSnapshot.controller.events = DXdaoSnapshot.controller.events.concat( await dxController.getPastEvents(
+  DXdaoTransactions.controller.events = DXdaoTransactions.controller.events.concat( await dxController.getPastEvents(
     'allEvents', {fromBlock: fromBlock, toBlock: toBlock}
   ));
   console.log('Getting events info for avatar')
-  DXdaoSnapshot.avatar.events = DXdaoSnapshot.avatar.events.concat( await dxAvatar.getPastEvents(
+  DXdaoTransactions.avatar.events = DXdaoTransactions.avatar.events.concat( await dxAvatar.getPastEvents(
     'allEvents', {fromBlock: fromBlock, toBlock: toBlock}
   ));
   console.log('Getting events info for token')
-  DXdaoSnapshot.token.events = DXdaoSnapshot.token.events.concat( await dxToken.getPastEvents(
+  DXdaoTransactions.token.events = DXdaoTransactions.token.events.concat( await dxToken.getPastEvents(
     'allEvents', {fromBlock: fromBlock, toBlock: toBlock}
   ));
   console.log('Getting events info for reputation')
-  DXdaoSnapshot.reputation.events = DXdaoSnapshot.reputation.events.concat( await dxReputation.getPastEvents(
+  DXdaoTransactions.reputation.events = DXdaoTransactions.reputation.events.concat( await dxReputation.getPastEvents(
     'allEvents', {fromBlock: fromBlock, toBlock: toBlock}
   ));
   console.log('Getting events info for genesisProtocol')
-  DXdaoSnapshot.genesisProtocol.events = DXdaoSnapshot.genesisProtocol.events.concat( await genesisProtocol.getPastEvents(
+  DXdaoTransactions.genesisProtocol.events = DXdaoTransactions.genesisProtocol.events.concat( await genesisProtocol.getPastEvents(
     'allEvents', {fromBlock: fromBlock, toBlock: toBlock}
   ));
   
@@ -288,24 +265,23 @@ async function main() {
     await sleep(30000);
     if (schemes.hasOwnProperty(schemeAddress)) {
       transactionsFetched = await getTransactions(schemeAddress, fromBlock, toBlock);
-      if (!DXdaoSnapshot.schemes[schemeAddress])
-        DXdaoSnapshot.schemes[schemeAddress] = { events: [] };
-        DXdaoTransactions.schemes[schemeAddress] = { txs: [], internalTxs: [] };
+      if (!DXdaoTransactions.schemes[schemeAddress])
+        DXdaoTransactions.schemes[schemeAddress] = { txs: [], internalTxs: [], events: [] };
+        DXdaoTransactions.schemes[schemeAddress] = { txs: [], internalTxs: [], events: [] };
       
       DXdaoTransactions.schemes[schemeAddress].txs = DXdaoTransactions.token.txs.concat(transactionsFetched.txs)
       DXdaoTransactions.schemes[schemeAddress].internalTxs = DXdaoTransactions.token.internalTxs.concat(transactionsFetched.internalTxs)
-      DXdaoSnapshot.schemes[schemeAddress].events = DXdaoSnapshot.schemes[schemeAddress].events.concat(
+      DXdaoTransactions.schemes[schemeAddress].events = DXdaoTransactions.schemes[schemeAddress].events.concat(
         await schemes[schemeAddress].getPastEvents(
         'allEvents', {fromBlock: fromBlock, toBlock: toBlock}
         )
       );
-      _.remove(DXdaoSnapshot.schemes[schemeAddress].events, (contractEvent) => {
+      _.remove(DXdaoTransactions.schemes[schemeAddress].events, (contractEvent) => {
         return contractEvent.returnValues._avatar && (contractEvent.returnValues._avatar != dxAvatar.address)
       });
     }
   }
   
-  fs.writeFileSync('DXdaoSnapshot.json', JSON.stringify(DXdaoSnapshot, null, 2), {encoding:'utf8',flag:'w'});
   fs.writeFileSync('DXdaoTransactions.json', JSON.stringify(DXdaoTransactions, null, 2), {encoding:'utf8',flag:'w'});
 } 
 
