@@ -89,6 +89,11 @@ schemes[contracts.schemes.EnsRegistrarScheme] = EnsRegistrarScheme.at(contracts.
 schemes[contracts.schemes.EnsRegistryScheme] = EnsRegistryScheme.at(contracts.schemes.EnsRegistryScheme);  
 schemes[contracts.schemes.TokenRegistry] = TokenRegistry.at(contracts.schemes.TokenRegistry);  
 
+const DXdaoSnapshotTemplate = {
+  fromBlock: 0,
+  toBlock: 0,
+};
+
 const DXdaoTransactionsTemplate = {
   fromBlock: 0,
   toBlock: 0,
@@ -121,7 +126,11 @@ const DXdaoTransactionsTemplate = {
 };
 
 // Fecth existent snapshot & transaction 
+let DXdaoSnapshot = DXdaoSnapshotTemplate;
 let DXdaoTransactions = DXdaoTransactionsTemplate;
+
+if (fs.existsSync('./DXdaoSnapshot.json') && !reset)
+  DXdaoSnapshot = Object.assign(DXdaoSnapshotTemplate, JSON.parse(fs.readFileSync('DXdaoSnapshot.json', 'utf-8')));
 
 if (fs.existsSync('./DXdaoTransactions.json') && !reset)
   DXdaoTransactions = Object.assign(DXdaoTransactionsTemplate, JSON.parse(fs.readFileSync('DXdaoTransactions.json', 'utf-8')));
@@ -137,9 +146,11 @@ async function main() {
 
   if (reset){
     fromBlock = 7850000;
+    DXdaoSnapshot.fromBlock = fromBlock;
     DXdaoTransactions.fromBlock = fromBlock;
   }
   
+  DXdaoSnapshot.toBlock = toBlock;
   DXdaoTransactions.toBlock = toBlock;
   
   console.log('Getting from block', fromBlock, 'to block', toBlock);
@@ -282,6 +293,7 @@ async function main() {
     }
   }
   
+  fs.writeFileSync('DXdaoSnapshot.json', JSON.stringify(DXdaoSnapshot, null, 2), {encoding:'utf8',flag:'w'});
   fs.writeFileSync('DXdaoTransactions.json', JSON.stringify(DXdaoTransactions, null, 2), {encoding:'utf8',flag:'w'});
 } 
 
