@@ -77,8 +77,8 @@ if (fs.existsSync('./DXdaoTransactions.json') && !reset)
 
 async function main() {
   
-  const fromBlock = DXdaoSnapshot.fromBlock;
-  const toBlock = DXdaoSnapshot.toBlock;
+  const fromBlock = DXdaoTransactions.fromBlock;
+  const toBlock = DXdaoTransactions.toBlock;
   
   console.log('Generating snapshot from block', fromBlock, 'to block', toBlock);
   
@@ -100,17 +100,17 @@ async function main() {
   history.internalTxs = history.internalTxs.concat(DXdaoTransactions.token.internalTxs);
   history.internalTxs = history.internalTxs.concat(DXdaoTransactions.genesisProtocol.internalTxs);
   
-  history.events = history.events.concat(DXdaoSnapshot.controller.events);
-  history.events = history.events.concat(DXdaoSnapshot.avatar.events);
-  history.events = history.events.concat(DXdaoSnapshot.reputation.events);
-  history.events = history.events.concat(DXdaoSnapshot.token.events);
-  history.events = history.events.concat(DXdaoSnapshot.genesisProtocol.events);
+  history.events = history.events.concat(DXdaoTransactions.controller.events);
+  history.events = history.events.concat(DXdaoTransactions.avatar.events);
+  history.events = history.events.concat(DXdaoTransactions.reputation.events);
+  history.events = history.events.concat(DXdaoTransactions.token.events);
+  history.events = history.events.concat(DXdaoTransactions.genesisProtocol.events);
   
-  for (var schemeAddress in DXdaoSnapshot.schemes) {
-    if (DXdaoSnapshot.schemes.hasOwnProperty(schemeAddress)) {
+  for (var schemeAddress in DXdaoTransactions.schemes) {
+    if (DXdaoTransactions.schemes.hasOwnProperty(schemeAddress)) {
       history.txs = history.txs.concat(DXdaoTransactions.schemes[schemeAddress].txs);
       history.internalTxs = history.internalTxs.concat(DXdaoTransactions.schemes[schemeAddress].internalTxs);
-      history.events = history.events.concat(DXdaoSnapshot.schemes[schemeAddress].events);
+      history.events = history.events.concat(DXdaoTransactions.schemes[schemeAddress].events);
     }
   }
   history.txs = _.uniqBy(history.txs, 'hash');
