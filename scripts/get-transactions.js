@@ -5,6 +5,7 @@ var _ = require('lodash');
 const args = process.argv;
 require('dotenv').config();
 const http = require('http');
+const https = require('https');
 const ethDecoder = require("@maticnetwork/eth-decoder");
 
 // Get network to use from arguments
@@ -24,6 +25,7 @@ if (!network) throw('Not network selected, --network parameter missing');
 const sleep = ms => new Promise(resolve => setTimeout(resolve,  (fast) ? 0 : ms));
 
 const EtherscanAPIToken = process.env.KEY_ETHERSCAN
+const BlockCyperEtherscanToken = process.env.KEY_BLOCKCYPHER
 const httpProviderUrl = `https://${network}.infura.io/v3/${process.env.KEY_INFURA_API_KEY }`
 
 console.log('Running information script on', httpProviderUrl)
@@ -77,17 +79,17 @@ const dxToken = DxToken.at(contracts.DxToken);
 const genesisProtocol = DxToken.at(contracts.GenesisProtocol);
 
 let schemes = {};
-schemes[contracts.schemes.DxLockMgnForRep] = DxLockMgnForRep.at(contracts.schemes.DxLockMgnForRep);  
-schemes[contracts.schemes.DxGenAuction4Rep] = DxGenAuction4Rep.at(contracts.schemes.DxGenAuction4Rep);  
-schemes[contracts.schemes.DxLockEth4Rep] = DxLockEth4Rep.at(contracts.schemes.DxLockEth4Rep);  
-schemes[contracts.schemes.DxLockWhitelisted4Rep] = DxLockWhitelisted4Rep.at(contracts.schemes.DxLockWhitelisted4Rep);  
-schemes[contracts.schemes.DutchXScheme] = DutchXScheme.at(contracts.schemes.DutchXScheme);  
-schemes[contracts.schemes.SchemeRegistrar] = SchemeRegistrar.at(contracts.schemes.SchemeRegistrar);  
-schemes[contracts.schemes.ContributionReward] = ContributionReward.at(contracts.schemes.ContributionReward);  
-schemes[contracts.schemes.EnsPublicResolverScheme] = EnsPublicResolverScheme.at(contracts.schemes.EnsPublicResolverScheme);  
-schemes[contracts.schemes.EnsRegistrarScheme] = EnsRegistrarScheme.at(contracts.schemes.EnsRegistrarScheme);  
-schemes[contracts.schemes.EnsRegistryScheme] = EnsRegistryScheme.at(contracts.schemes.EnsRegistryScheme);  
-schemes[contracts.schemes.TokenRegistry] = TokenRegistry.at(contracts.schemes.TokenRegistry);  
+schemes[contracts.schemes.DxLockMgnForRep] = DxLockMgnForRep.at(contracts.schemes.DxLockMgnForRep);
+schemes[contracts.schemes.DxGenAuction4Rep] = DxGenAuction4Rep.at(contracts.schemes.DxGenAuction4Rep);
+schemes[contracts.schemes.DxLockEth4Rep] = DxLockEth4Rep.at(contracts.schemes.DxLockEth4Rep);
+schemes[contracts.schemes.DxLockWhitelisted4Rep] = DxLockWhitelisted4Rep.at(contracts.schemes.DxLockWhitelisted4Rep);
+schemes[contracts.schemes.DutchXScheme] = DutchXScheme.at(contracts.schemes.DutchXScheme);
+schemes[contracts.schemes.SchemeRegistrar] = SchemeRegistrar.at(contracts.schemes.SchemeRegistrar);
+schemes[contracts.schemes.ContributionReward] = ContributionReward.at(contracts.schemes.ContributionReward);
+schemes[contracts.schemes.EnsPublicResolverScheme] = EnsPublicResolverScheme.at(contracts.schemes.EnsPublicResolverScheme);
+schemes[contracts.schemes.EnsRegistrarScheme] = EnsRegistrarScheme.at(contracts.schemes.EnsRegistrarScheme);
+schemes[contracts.schemes.EnsRegistryScheme] = EnsRegistryScheme.at(contracts.schemes.EnsRegistryScheme);
+schemes[contracts.schemes.TokenRegistry] = TokenRegistry.at(contracts.schemes.TokenRegistry);
 
 const DXdaoSnapshotTemplate = {
   fromBlock: 0,
@@ -128,25 +130,28 @@ if (fs.existsSync('./DXdaoSnapshot.json') && !reset)
 async function main() {
 
   // Set last confirmed block as toBlock
-  
+
   if (toBlock == 'latest')
     toBlock = (await web3.eth.getBlock('latest')).number;
-    
+
   let fromBlock = DXdaoSnapshot.toBlock + 1;
 
-  if (reset){
+  if (reset) {
     fromBlock = 7850000;
     DXdaoSnapshot.fromBlock = fromBlock;
   }
-  
+
   DXdaoSnapshot.toBlock = toBlock;
-  
+
   console.log('Getting from block', fromBlock, 'to block', toBlock);
 
   async function makeSynchronousRequest(url) {
+    let protocol = http;
+    if (url.substr(0,5)==='https')
+      protocol = https
   	try {
   		let http_promise = new Promise((resolve, reject) => {
-    		http.get(url, (response) => {
+    		protocol.get(url, (response) => {
     			let chunks_of_data = [];
 
     			response.on('data', (fragments) => {
@@ -155,7 +160,11 @@ async function main() {
 
     			response.on('end', () => {
     				let response_body = Buffer.concat(chunks_of_data);
-    				resolve(response_body.toString());
+    				resolve({
+              body: response_body.toString(),
+              type: response.headers['content-type'],
+              status: response.statusCode
+            });
     			});
 
     			response.on('error', (error) => {
@@ -163,80 +172,181 @@ async function main() {
     			});
     		});
     	});
-  		return JSON.parse(await http_promise).result;
+      let response = await http_promise
+      if(
+        (
+          response.type.startsWith("application/json") ||
+          response.type.startsWith("text/json") ||
+          response.type.startsWith("application/javascript")
+        ) && (
+          response.status == 200
+        )
+      )
+  		  return JSON.parse(response.body).result
+
+      console.log("Request failed.")
+      console.log("Response Status", response.status)
+      console.log("Response Type", response.type)
+      console.log("Response from was not json. Waiting 15s and retrying. URL:", url)
+      console.log("If this error continually occurs, may be due to too large of a block range for snapshot.")
+      await sleep(15000);
+      return await makeSynchronousRequest(url)
   	}
   	catch(error) {
   		console.error(error);
   	}
   }
-    
-  async function getTransactions(_address, _fromBlock, _toBlock) {
-    let txsEtherscan = await makeSynchronousRequest(
-      'http://api.etherscan.io/api?module=account&action=txlist&address='
-      +_address
-      +'&startblock='+_fromBlock
-      +'&endblock='+_toBlock
-      +'&sort=asc&apikey='
-      +EtherscanAPIToken
-    )
-    let internalTxsEtherscan = await makeSynchronousRequest(
-      'http://api.etherscan.io/api?module=account&action=txlistinternal&address='
-      +_address
-      +'&startblock='+_fromBlock
-      +'&endblock='+_toBlock
-      +'&sort=asc&apikey='
-      +EtherscanAPIToken
-    )
-    let txs = [];
-    let internalTxs = [];
-    for (var i = 0; i < txsEtherscan.length; i++) {
-      console.log('Getting tx info', txsEtherscan[i].hash, 'for address', _address)
-      await sleep(10);
-      let txToPush = await web3.eth.getTransaction(txsEtherscan[i].hash);
-      txToPush.receipt = await web3.eth.getTransactionReceipt(txsEtherscan[i].hash);
-      if (txToPush.receipt.logs)
-        txToPush.receipt.logs = logDecoder.decodeLogs(txToPush.receipt.logs)
-      txs.push(txToPush);
+
+  function getTransactionHashesComposer(
+    _txsUriBuilder,
+    _internalTxsUriBuilder,
+    _getHashFromApiServiceTx,
+    _apiServiceName //for logging only
+  ) {
+    return async (_address, _fromBlock, _toBlock) => {
+      let txsFromApiService = await makeSynchronousRequest(
+        _txsUriBuilder(_address, _fromBlock, _toBlock)
+      )
+      let internalTxsFromApiService = await makeSynchronousRequest(
+        _internalTxsUriBuilder(_address, _fromBlock, _toBlock)
+      )
+      let txHashes = txsFromApiService.map(_getHashFromApiServiceTx)
+      let internalTxHashes = internalTxsFromApiService.map(_getHashFromApiServiceTx)
+
+      console.log('Address:',_address,'; Service:',_apiServiceName,'; Tx Hashes:',txHashes.length,'; Int Tx Hashes:', internalTxHashes.length);
+      return { txHashes, internalTxHashes };
     }
-    for (var i = 0; i < internalTxsEtherscan.length; i++) {
-      console.log('Getting internal tx info', internalTxsEtherscan[i].hash, 'for address', _address)
-      await sleep(10);
-      let internalTxToPush = await web3.eth.getTransactionReceipt(internalTxsEtherscan[i].hash);
-      if (internalTxToPush.logs)
-        internalTxToPush.logs = logDecoder.decodeLogs(internalTxToPush.logs)
-      internalTxs.push(internalTxToPush);
-    }
-    
-    console.log('Total transactions:',txs.length,'; Total internal transactions:', internalTxs.length);
-    return { txs, internalTxs };
   }
-  
+
+  function etherscanGetHashFromApiServiceTx(tx) {
+    return tx.hash
+  }
+
+  function etherscanTxsUriBuilder(_address, _fromBlock, _toBlock) {
+    return 'https://api.etherscan.io/api?module=account&action=txlist&address='
+      +_address
+      +'&startblock='+_fromBlock
+      +'&endblock='+_toBlock
+      +'&sort=asc&apikey='
+      +EtherscanAPIToken
+  }
+
+  function etherscanInternalTxsUriBuilder(_address, _fromBlock, _toBlock) {
+    return 'https://api.etherscan.io/api?module=account&action=txlistinternal&address='
+      +_address
+      +'&startblock='+_fromBlock
+      +'&endblock='+_toBlock
+      +'&sort=asc&apikey='
+      +EtherscanAPIToken
+  }
+
+  function blockscoutGetHashFromApiServiceTx(tx) {
+    if (typeof(tx.hash)!=='undefined')
+      return tx.hash
+    if (typeof(tx.transactionHash)!=='undefined')
+      return tx.transactionHash
+    console.log('Failed tx: ',tx)
+    throw 'Neither tx.hash nor tx.transactionHash found in blockscout tx.'
+  }
+
+  function blockscoutTxsUriBuilder(_address, _fromBlock, _toBlock) {
+    return 'https://blockscout.com/eth/mainnet/api?module=account&action=txlist&address='
+      +_address
+      +'&startblock='+_fromBlock
+      +'&endblock='+_toBlock
+      +'&sort=asc'
+  }
+
+  function blockscoutInternalTxsUriBuilder(_address, _fromBlock, _toBlock) {
+    return 'https://blockscout.com/eth/mainnet/api?module=account&action=txlistinternal&address='
+      +_address
+      +'&startblock='+_fromBlock
+      +'&endblock='+_toBlock
+      +'&sort=asc'
+  }
+
+  function getTransactionsMultiApiComposer(
+    _txHashApiServices
+  ) {
+    return async (_address,_fromBlock,_toBlock) => {
+      let txHashesFromEachApi =
+        await Promise.all(
+          _txHashApiServices.map((func)=>func(_address,_fromBlock,_toBlock))
+        )
+      let txHashes = _.union(
+        ...txHashesFromEachApi.map((apiHashes)=>apiHashes.txHashes)
+      )
+      let internalTxHashes = _.union(
+        ...txHashesFromEachApi.map((apiHashes)=>apiHashes.internalTxHashes)
+      )
+      let txs = await Promise.all(
+        txHashes.map(async (hash,index)=>{
+          await sleep(50*index);
+          console.log('Getting tx ', hash, 'for address', _address)
+          let txToPush = await web3.eth.getTransaction(hash);
+          txToPush.receipt = await web3.eth.getTransactionReceipt(hash);
+          if (txToPush.receipt.logs)
+            txToPush.receipt.logs = logDecoder.decodeLogs(txToPush.receipt.logs)
+          return txToPush
+        })
+      )
+      let internalTxs = await Promise.all(
+        internalTxHashes.map(async (hash,index)=>{
+          await sleep(50*index);
+          console.log('Getting internal tx ', hash, 'for address', _address)
+          let internalTxToPush = await web3.eth.getTransactionReceipt(hash);
+          if (internalTxToPush.logs)
+            internalTxToPush.logs = logDecoder.decodeLogs(internalTxToPush.logs)
+          return internalTxToPush
+        })
+      )
+
+      return {txs, internalTxs}
+    }
+  }
+
+  let getBlockscoutTransactionHashes = getTransactionHashesComposer(
+    blockscoutTxsUriBuilder,
+    blockscoutInternalTxsUriBuilder,
+    blockscoutGetHashFromApiServiceTx,
+    "blockscout"
+  )
+
+  let getEtherscanTransactionHashes = getTransactionHashesComposer(
+    etherscanTxsUriBuilder,
+    etherscanInternalTxsUriBuilder,
+    etherscanGetHashFromApiServiceTx,
+    "etherscan"
+  )
+
+  let getTransactions = getTransactionsMultiApiComposer([getEtherscanTransactionHashes,getBlockscoutTransactionHashes])
+
   let transactionsFetched;
   console.log('Getting txs from controller..');
   transactionsFetched = await getTransactions(dxController.address, fromBlock, toBlock);
   DXdaoSnapshot.controller.txs = DXdaoSnapshot.controller.txs.concat(transactionsFetched.txs);
   DXdaoSnapshot.controller.internalTxs = DXdaoSnapshot.controller.internalTxs.concat(transactionsFetched.internalTxs);
-  
+
   console.log('Getting txs from avatar..')
   transactionsFetched = await getTransactions(dxAvatar.address, fromBlock, toBlock);
   DXdaoSnapshot.avatar.txs = DXdaoSnapshot.avatar.txs.concat(transactionsFetched.txs)
   DXdaoSnapshot.avatar.internalTxs = DXdaoSnapshot.avatar.internalTxs.concat(transactionsFetched.internalTxs)
-  
+
   console.log('Getting txs from token..')
   transactionsFetched = await getTransactions(dxToken.address, fromBlock, toBlock);
   DXdaoSnapshot.token.txs = DXdaoSnapshot.token.txs.concat(transactionsFetched.txs)
   DXdaoSnapshot.token.internalTxs = DXdaoSnapshot.token.internalTxs.concat(transactionsFetched.internalTxs)
-  
+
   console.log('Getting txs from reputation..')
   transactionsFetched = await getTransactions(dxReputation.address, fromBlock, toBlock);
   DXdaoSnapshot.reputation.txs = DXdaoSnapshot.reputation.txs.concat(transactionsFetched.txs)
   DXdaoSnapshot.reputation.internalTxs = DXdaoSnapshot.reputation.internalTxs.concat(transactionsFetched.internalTxs)
-  
+
   console.log('Getting txs from genesisProtocol..')
   transactionsFetched = await getTransactions(genesisProtocol.address, fromBlock, toBlock);
   DXdaoSnapshot.genesisProtocol.txs = DXdaoSnapshot.genesisProtocol.txs.concat(transactionsFetched.txs)
   DXdaoSnapshot.genesisProtocol.internalTxs = DXdaoSnapshot.genesisProtocol.internalTxs.concat(transactionsFetched.internalTxs)
-  
+
   console.log('Getting events info for controller')
   DXdaoSnapshot.controller.events = DXdaoSnapshot.controller.events.concat( await dxController.getPastEvents(
     'allEvents', {fromBlock: fromBlock, toBlock: toBlock}
@@ -257,7 +367,7 @@ async function main() {
   DXdaoSnapshot.genesisProtocol.events = DXdaoSnapshot.genesisProtocol.events.concat( await genesisProtocol.getPastEvents(
     'allEvents', {fromBlock: fromBlock, toBlock: toBlock}
   ));
-  
+
   console.log('Getting txs from schemes..')
   for (var schemeAddress in schemes) {
     console.log('Getting txs from scheme', schemeAddress);
@@ -278,8 +388,8 @@ async function main() {
       });
     }
   }
-  
+
   fs.writeFileSync('DXdaoSnapshot.json', JSON.stringify(DXdaoSnapshot, null, 2), {encoding:'utf8',flag:'w'});
-} 
+}
 
 Promise.all([main()]).then(process.exit);
