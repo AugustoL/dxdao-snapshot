@@ -132,6 +132,10 @@ let DXdaoSnapshot = DXdaoSnapshotTemplate;
 if (fs.existsSync('./DXdaoSnapshot.json') && !reset)
   DXdaoSnapshot = Object.assign(DXdaoSnapshotTemplate, JSON.parse(fs.readFileSync('DXdaoSnapshot.json', 'utf-8')));
 
+let DXdaoTransactions = DXdaoTransactionsTemplate;
+  if (fs.existsSync('./DXdaoTransactions.json') && !reset)
+    DXdaoTransactions = Object.assign(DXdaoTransactionsTemplate, JSON.parse(fs.readFileSync('DXdaoTransactions.json', 'utf-8')));
+
 async function main() {
 
   // Set last confirmed block as toBlock
