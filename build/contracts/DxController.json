@@ -20206,7 +20206,7 @@
                                         "name": "this",
                                         "nodeType": "Identifier",
                                         "overloadedDeclarations": [],
-                                        "referencedDeclaration": 71582,
+                                        "referencedDeclaration": 71604,
                                         "src": "25506:4:1",
                                         "typeDescriptions": {
                                           "typeIdentifier": "t_contract$_SafeERC20_$3290",
@@ -41775,7 +41775,7 @@
                           "name": "this",
                           "nodeType": "Identifier",
                           "overloadedDeclarations": [],
-                          "referencedDeclaration": 71590,
+                          "referencedDeclaration": 71612,
                           "src": "53150:4:1",
                           "typeDescriptions": {
                             "typeIdentifier": "t_contract$_Controller_$5279",
@@ -42096,7 +42096,7 @@
                           "name": "this",
                           "nodeType": "Identifier",
                           "overloadedDeclarations": [],
-                          "referencedDeclaration": 71590,
+                          "referencedDeclaration": 71612,
                           "src": "53336:4:1",
                           "typeDescriptions": {
                             "typeIdentifier": "t_contract$_Controller_$5279",
@@ -42361,7 +42361,7 @@
                             "name": "this",
                             "nodeType": "Identifier",
                             "overloadedDeclarations": [],
-                            "referencedDeclaration": 71590,
+                            "referencedDeclaration": 71612,
                             "src": "53523:4:1",
                             "typeDescriptions": {
                               "typeIdentifier": "t_contract$_Controller_$5279",
@@ -66478,7 +66478,7 @@
                                         "name": "this",
                                         "nodeType": "Identifier",
                                         "overloadedDeclarations": [],
-                                        "referencedDeclaration": 71582,
+                                        "referencedDeclaration": 71604,
                                         "src": "25506:4:1",
                                         "typeDescriptions": {
                                           "typeIdentifier": "t_contract$_SafeERC20_$3290",
@@ -88047,7 +88047,7 @@
                           "name": "this",
                           "nodeType": "Identifier",
                           "overloadedDeclarations": [],
-                          "referencedDeclaration": 71590,
+                          "referencedDeclaration": 71612,
                           "src": "53150:4:1",
                           "typeDescriptions": {
                             "typeIdentifier": "t_contract$_Controller_$5279",
@@ -88368,7 +88368,7 @@
                           "name": "this",
                           "nodeType": "Identifier",
                           "overloadedDeclarations": [],
-                          "referencedDeclaration": 71590,
+                          "referencedDeclaration": 71612,
                           "src": "53336:4:1",
                           "typeDescriptions": {
                             "typeIdentifier": "t_contract$_Controller_$5279",
@@ -88633,7 +88633,7 @@
                             "name": "this",
                             "nodeType": "Identifier",
                             "overloadedDeclarations": [],
-                            "referencedDeclaration": 71590,
+                            "referencedDeclaration": 71612,
                             "src": "53523:4:1",
                             "typeDescriptions": {
                               "typeIdentifier": "t_contract$_Controller_$5279",
@@ -93594,8 +93594,8 @@
     "version": "0.5.17+commit.d19bba13.Emscripten.clang"
   },
   "networks": {},
-  "schemaVersion": "3.1.0",
-  "updatedAt": "2020-05-25T14:33:40.933Z",
+  "schemaVersion": "3.2.0",
+  "updatedAt": "2020-06-19T21:47:41.505Z",
   "devdoc": {
     "methods": {
       "addGlobalConstraint(address,bytes32,address)": {

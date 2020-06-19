@@ -41,8 +41,8 @@ const DxLockWhitelisted4Rep = Contracts.getFromLocal("DxLockWhitelisted4Rep");
 const DutchXScheme = Contracts.getFromLocal("DutchXScheme");
 const SchemeRegistrar = Contracts.getFromLocal("SchemeRegistrar");
 const ContributionReward = Contracts.getFromLocal("ContributionReward");
-const EnsPublicResolverScheme = Contracts.getFromLocal(
-  "EnsPublicResolverScheme"
+const EnsPublicProviderScheme = Contracts.getFromLocal(
+  "EnsPublicProviderScheme"
 );
 const EnsRegistrarScheme = Contracts.getFromLocal("EnsRegistrarScheme");
 const EnsRegistryScheme = Contracts.getFromLocal("EnsRegistryScheme");
@@ -77,8 +77,8 @@ schemes[contracts.schemes.SchemeRegistrar] = SchemeRegistrar.at(
 schemes[contracts.schemes.ContributionReward] = ContributionReward.at(
   contracts.schemes.ContributionReward
 );
-schemes[contracts.schemes.EnsPublicResolverScheme] = EnsPublicResolverScheme.at(
-  contracts.schemes.EnsPublicResolverScheme
+schemes[contracts.schemes.EnsPublicProviderScheme] = EnsPublicProviderScheme.at(
+  contracts.schemes.EnsPublicProviderScheme
 );
 schemes[contracts.schemes.EnsRegistrarScheme] = EnsRegistrarScheme.at(
   contracts.schemes.EnsRegistrarScheme
@@ -89,17 +89,28 @@ schemes[contracts.schemes.EnsRegistryScheme] = EnsRegistryScheme.at(
 schemes[contracts.schemes.TokenRegistry] = TokenRegistry.at(
   contracts.schemes.TokenRegistry
 );
-
-// Fecth existent snapshot
-let DXdaoSnapshot;
-if (fs.existsSync("./DXdaoSnapshot.json") && !reset)
-  DXdaoSnapshot = JSON.parse(fs.readFileSync("DXdaoSnapshot.json", "utf-8"));
+schemes[contracts.schemes.EnsPublicResolverScheme] = EnsPublicProviderScheme.at(
+  contracts.schemes.EnsPublicResolverScheme
+);
+const schemeNames = _.invert(contracts.schemes);
 
 let DXdaoTransactions;
-if (fs.existsSync("./DXdaoTransactions.json") && !reset)
+if (fs.existsSync("./DXdaoTransactions.json")) {
   DXdaoTransactions = JSON.parse(
     fs.readFileSync("DXdaoTransactions.json", "utf-8")
   );
+} else {
+  throw('DXdaoTransactions.json file missing');
+}
+
+// Fecth existent snapshot
+let DXdaoSnapshot = {
+  schemesInfo: {},
+  proposals: {},
+  activeProposals: {}
+}
+if (fs.existsSync("./DXdaoSnapshot.json") && !reset)
+  DXdaoSnapshot = JSON.parse(fs.readFileSync("DXdaoSnapshot.json", "utf-8"));
 
 async function main() {
   const fromBlock = DXdaoTransactions.fromBlock;
@@ -269,8 +280,8 @@ async function main() {
 
     schemesInfo[registeredSchemes[i]] = {
       name: schemes[registeredSchemes[i]]
-        ? schemes[registeredSchemes[i]].schema.contractName
-        : "UnregisteredSchema",
+        ? schemeNames[registeredSchemes[i]]
+        : "UnregisteredScheme",
       paramsHash: scheme.paramsHash,
       permissions: permissions,
       activePeriods: activePeriods,

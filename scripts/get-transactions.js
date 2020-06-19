@@ -45,7 +45,7 @@ const DxLockWhitelisted4Rep = Contracts.getFromLocal('DxLockWhitelisted4Rep');
 const DutchXScheme = Contracts.getFromLocal('DutchXScheme');
 const SchemeRegistrar = Contracts.getFromLocal('SchemeRegistrar');
 const ContributionReward = Contracts.getFromLocal('ContributionReward');
-const EnsPublicResolverScheme = Contracts.getFromLocal('EnsPublicResolverScheme');
+const EnsPublicProviderScheme = Contracts.getFromLocal('EnsPublicProviderScheme');
 const EnsRegistrarScheme = Contracts.getFromLocal('EnsRegistrarScheme');
 const EnsRegistryScheme = Contracts.getFromLocal('EnsRegistryScheme');
 const TokenRegistry = Contracts.getFromLocal('TokenRegistry');
@@ -64,7 +64,7 @@ const logDecoder = new ethDecoder.default.LogDecoder(
     DutchXScheme.schema.abi,
     SchemeRegistrar.schema.abi,
     ContributionReward.schema.abi,
-    EnsPublicResolverScheme.schema.abi,
+    EnsPublicProviderScheme.schema.abi,
     EnsRegistrarScheme.schema.abi,
     EnsRegistryScheme.schema.abi,
     TokenRegistry.schema.abi
@@ -86,10 +86,11 @@ schemes[contracts.schemes.DxLockWhitelisted4Rep] = DxLockWhitelisted4Rep.at(cont
 schemes[contracts.schemes.DutchXScheme] = DutchXScheme.at(contracts.schemes.DutchXScheme);
 schemes[contracts.schemes.SchemeRegistrar] = SchemeRegistrar.at(contracts.schemes.SchemeRegistrar);
 schemes[contracts.schemes.ContributionReward] = ContributionReward.at(contracts.schemes.ContributionReward);
-schemes[contracts.schemes.EnsPublicResolverScheme] = EnsPublicResolverScheme.at(contracts.schemes.EnsPublicResolverScheme);
+schemes[contracts.schemes.EnsPublicProviderScheme] = EnsPublicProviderScheme.at(contracts.schemes.EnsPublicProviderScheme);
 schemes[contracts.schemes.EnsRegistrarScheme] = EnsRegistrarScheme.at(contracts.schemes.EnsRegistrarScheme);
 schemes[contracts.schemes.EnsRegistryScheme] = EnsRegistryScheme.at(contracts.schemes.EnsRegistryScheme);
 schemes[contracts.schemes.TokenRegistry] = TokenRegistry.at(contracts.schemes.TokenRegistry);
+schemes[contracts.schemes.EnsPublicResolverScheme] = EnsPublicProviderScheme.at(contracts.schemes.EnsPublicResolverScheme);
 
 const DXdaoSnapshotTemplate = {
   fromBlock: 0,
