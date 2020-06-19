@@ -175,10 +175,12 @@ SchemeRegistrar: https://etherscan.io/address/0xf050F3C6772Ff35eB174A6900833243f
 
 ContributionReward: https://etherscan.io/address/0x08cC7BBa91b849156e9c44DEd51896B38400f55B
 
-EnsPublicResolver (GenericScheme): https://etherscan.io/address/0x9A543aeF934c21Da5814785E38f9A7892D3CDE6E
+GenericSchemeENSPublicProvider: https://etherscan.io/address/0x9A543aeF934c21Da5814785E38f9A7892D3CDE6E
 
 EnsRegistrar (GenericScheme): https://etherscan.io/address/0x973ce4e81BdC3bD39f46038f3AaA928B04558b08
 
 EnsRegistry (GenericScheme): https://etherscan.io/address/0x9CEA0DD05C4344A769B2F4C2f8890EDa8a700d64
 
 TokenRegistry (GenericScheme): https://etherscan.io/address/0xc072171dA83CCe311e37BC1d168f54E6A6536DF4
+
+GenericSchemeENSPublicResolver: https://etherscan.io/address/0xb3ec6089556cca49549be01ff446cf40fa81c84d
