@@ -328,8 +328,12 @@ async function main() {
     etherscanGetHashFromApiServiceTx,
     "etherscan"
   )
-
-  let getTransactions = getTransactionsMultiApiComposer([getEtherscanTransactionHashes,getBlockscoutTransactionHashes])
+  let providers = []
+  if (BlockCyperEtherscanToken)
+    providers.push(getBlockscoutTransactionHashes)
+  if (EtherscanAPIToken) 
+    providers.push(getEtherscanTransactionHashes)
+  let getTransactions = getTransactionsMultiApiComposer(providers);
 
   let transactionsFetched;
   console.log('Getting txs from controller..');
