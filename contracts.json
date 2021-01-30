@@ -17,6 +17,7 @@
     "EnsRegistrarScheme": "0x973ce4e81BdC3bD39f46038f3AaA928B04558b08",
     "EnsRegistryScheme": "0x9CEA0DD05C4344A769B2F4C2f8890EDa8a700d64",
     "TokenRegistry": "0xc072171dA83CCe311e37BC1d168f54E6A6536DF4",
-    "EnsPublicResolverScheme": "0xB3ec6089556CcA49549Be01fF446cF40fA81c84D"
+    "EnsPublicResolverScheme": "0xB3ec6089556CcA49549Be01fF446cF40fA81c84D",
+    "GenericSchemeMultiCall": "0xef9dC3c39CA40A2a3000ACc5ca0467CE1C250808"
   }
 }
