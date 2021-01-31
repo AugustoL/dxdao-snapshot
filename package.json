@@ -6,7 +6,7 @@
   "scripts": {
     "transactions": "cross-env NODE_OPTIONS=--max-old-space-size=4096 npx hardhat run --network mainnet scripts/get-transactions.js",
     "snapshot": "cross-env NODE_OPTIONS=--max-old-space-size=4096 npx hardhat run --network mainnet scripts/build-snapshot.js",
-    "compile": "cross-env NODE_OPTIONS=--max-old-space-size=4096 npx truffle compile --reset",
+    "compile": "cross-env NODE_OPTIONS=--max-old-space-size=4096 npx hardhat compile",
     "start": "npm run compile && npm run transactions && npm run snapshot"
   },
   "repository": {
