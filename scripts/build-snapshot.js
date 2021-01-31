@@ -46,7 +46,7 @@ if (fs.existsSync("./DXdaoTransactions.json")) {
 let DXdaoSnapshotTemplate = {
   schemesInfo: {},
   proposals: {},
-  activeProposals: {}
+  activeProposals: []
 }
 // Fecth existent snapshot file
 let DXdaoSnapshot = DXdaoSnapshotTemplate;
@@ -220,8 +220,11 @@ async function main() {
     delete schemeAddedBlock[registeredSchemes[i]];
   }
 
+  let schemesInfo = DXdaoSnapshot.schemesInfo;
+  let proposals = DXdaoSnapshot.proposals;
+  let activeProposals = DXdaoSnapshot.activeProposals;
+  
   // TO DO: check schemeAddedBlock is empty object
-  let schemesInfo = {};
   for (var i = 0; i < registeredSchemes.length; i++) {
     const scheme = await dxController.schemes(registeredSchemes[i]);
 
@@ -244,19 +247,17 @@ async function main() {
     };
 
     // TO DO: Add analysis of global constrains of each scheme
-
-    schemesInfo[registeredSchemes[i]] = {
-      name: schemes[registeredSchemes[i]]
-        ? schemeNames[registeredSchemes[i]]
-        : "UnregisteredScheme",
-      paramsHash: scheme.paramsHash,
-      permissions: permissions,
-      activePeriods: activePeriods,
-      activeProposals: [],
-    };
+    if (!schemesInfo[registeredSchemes[i]])
+      schemesInfo[registeredSchemes[i]] = {
+        name: schemes[registeredSchemes[i]]
+          ? schemeNames[registeredSchemes[i]]
+          : "UnregisteredScheme",
+        paramsHash: scheme.paramsHash,
+        permissions: permissions,
+        activePeriods: activePeriods,
+        activeProposals: [],
+      };
   }
-  let proposals = {};
-  let activeProposals = [];
   const schemesEvents = _.filter(history.events, function(o) { return schemeNames[o.address] });
   schemesEvents.forEach((historyEvent) => {
     if (
@@ -305,50 +306,47 @@ async function main() {
   }
 
   let proposalsIds = Object.keys(proposals), proposalsIdsChunkIndex = 0;
-  while(proposalsIds.length) {
-    const proposalsIdsChunk = proposalsIds.splice(0,10);
+  const proposalsToCheck = proposalsIds.filter((proposalId)=> {
+    return (!proposals[proposalId].genesisProtocolData || activeProposals.indexOf(proposalId) >= 0)
+  })
+  while(proposalsToCheck.length) {
+    const proposalsIdsChunk = proposalsToCheck.splice(0,10);
     await Promise.all(
       proposalsIdsChunk.map(async (proposalId,index)=> {
         let keepTrying;
-        if (!DXdaoSnapshot.proposals[proposalId] || DXdaoSnapshot.activeProposals.indexOf(proposalId) >= 0)
-          do {
-            try {
-              console.log("Getting information of proposal", proposalId, (proposalsIdsChunkIndex*10)+index)
-              proposals[proposalId].genesisProtocolData = removeNumberKeys(
-                await genesisProtocol.proposals(proposalId)
+        do {
+          try {
+            console.log("Getting information of proposal", proposalId, (proposalsIdsChunkIndex*10)+index+1)
+            proposals[proposalId].genesisProtocolData = removeNumberKeys(
+              await genesisProtocol.proposals(proposalId)
+            );
+            proposals[proposalId].genesisProtocolData.state =
+              ProposalState[proposals[proposalId].genesisProtocolData.state];
+            proposals[proposalId].genesisProtocolData.winningVote =
+              WinningVoteState[proposals[proposalId].genesisProtocolData.winningVote];
+            if (schemes[proposals[proposalId].scheme].organizationsProposals) {
+              proposals[proposalId].proposalData = removeNumberKeys(
+                await schemes[proposals[proposalId].scheme].organizationsProposals(dxAvatar.address, proposalId)
               );
-              proposals[proposalId].genesisProtocolData.state =
-                ProposalState[proposals[proposalId].genesisProtocolData.state];
-              proposals[proposalId].genesisProtocolData.winningVote =
-                WinningVoteState[proposals[proposalId].genesisProtocolData.winningVote];
-              if (schemes[proposals[proposalId].scheme].organizationsProposals) {
-                proposals[proposalId].proposalData = removeNumberKeys(
-                  await schemes[proposals[proposalId].scheme].organizationsProposals(dxAvatar.address, proposalId)
-                );
-              } else if (schemes[proposals[proposalId].scheme].organizationProposals) {
-                proposals[proposalId].proposalData = removeNumberKeys(
-                  await schemes[proposals[proposalId].scheme].organizationProposals(proposalId)
-                );
-              } else if (schemes[proposals[proposalId].scheme].proposals) {
-                proposals[proposalId].proposalData = removeNumberKeys(
-                  await schemes[proposals[proposalId].scheme].proposals(proposalId)
-                );
-              }
-              if (schemes[proposals[proposalId].scheme].contractToCall) {
-                proposals[proposalId].contractToCall = await schemes[
-                  proposals[proposalId].scheme
-                ].contractToCall();
-              }
-              if (proposals[proposalId].scheme == contracts.schemes.GenericSchemeMultiCall) {
-                // proposals[proposalId].toSimulate = {
-                //   to: dxController.proposalData.contractsToCall,
-                //   from: dxAvatar.address,
-                //   data: "0x",
-                //   value: "0"
-                // };
-              } else if (proposals[proposalId].proposalData.callData) {
-                proposals[proposalId].toSimulate = {
-                  to: dxAvatar.address,
+            } else if (schemes[proposals[proposalId].scheme].organizationProposals) {
+              proposals[proposalId].proposalData = removeNumberKeys(
+                await schemes[proposals[proposalId].scheme].organizationProposals(proposalId)
+              );
+            } else if (schemes[proposals[proposalId].scheme].proposals) {
+              proposals[proposalId].proposalData = removeNumberKeys(
+                await schemes[proposals[proposalId].scheme].proposals(proposalId)
+              );
+            }
+            if (schemes[proposals[proposalId].scheme].contractToCall) {
+              proposals[proposalId].contractToCall = await schemes[
+                proposals[proposalId].scheme
+              ].contractToCall();
+            }
+            if (proposals[proposalId].scheme == contracts.schemes.GenericSchemeMultiCall) {
+              proposals[proposalId].toSimulate = [];
+              for (var i = 0; i < proposals[proposalId].event.returnValues._contractsToCall.length; i++)
+                proposals[proposalId].toSimulate.push({
+                  to: dxController.address,
                   from: proposals[proposalId].scheme,
                   data: web3.eth.abi.encodeFunctionCall({
                     name: 'genericCall',
@@ -367,32 +365,58 @@ async function main() {
                         name: '_value'
                     }]
                   }, [
-                    proposals[proposalId].contractToCall,
-                    proposals[proposalId].proposalData.callData,
+                    proposals[proposalId].event.returnValues._contractsToCall[i],
+                    proposals[proposalId].event.returnValues._callsData[i],
                     dxAvatar.address,
-                    proposals[proposalId].proposalData.value
+                    proposals[proposalId].event.returnValues._values[i]
                   ]),
-                  value: proposals[proposalId].proposalData.value,
-                };
-              }
-
-              keepTrying = false;
-            } catch(e) {
-              console.error(e);
-              console.log(
-                "Getting information of proposal", proposalId, (proposalsIdsChunkIndex*100)+index, 'failed... trying again.'
-              );
-              await sleep(100);
-              keepTrying = true;
+                  value: 0,
+                });
+            } else if (proposals[proposalId].contractToCall && proposals[proposalId].proposalData.callData) {
+              proposals[proposalId].toSimulate = {
+                to: dxController.address,
+                from: proposals[proposalId].scheme,
+                data: web3.eth.abi.encodeFunctionCall({
+                  name: 'genericCall',
+                  type: 'function',
+                  inputs: [{
+                      type: 'address',
+                      name: '_contract'
+                  },{
+                      type: 'bytes',
+                      name: '_data'
+                  },{
+                      type: 'address',
+                      name: '_avatar'
+                  },{
+                      type: 'uint256',
+                      name: '_value'
+                  }]
+                }, [
+                  proposals[proposalId].contractToCall,
+                  proposals[proposalId].proposalData.callData,
+                  dxAvatar.address,
+                  proposals[proposalId].proposalData.value
+                ]),
+                value: 0,
+              };
             }
-          } while (keepTrying)
-        
+
+            keepTrying = false;
+          } catch(e) {
+            console.error(e);
+            console.log(
+              "Getting information of proposal", proposalId, (proposalsIdsChunkIndex*10)+index+1, 'failed... trying again.'
+            );
+            await sleep(100);
+            keepTrying = true;
+          }
+        } while (keepTrying)
       })
     )
-    await sleep(5000);
+    await sleep(100);
     proposalsIdsChunkIndex ++;
   }
-
   console.log("Total proposals:\n", _.size(proposals));
   console.log("Total active proposals:\n", activeProposals.length);
   for (var schemeAddress in schemesInfo) {
@@ -410,23 +434,18 @@ async function main() {
     }
   }
 
-  proposalsIds.map(async (proposalId, index)=>{
-    if (
-      proposals.hasOwnProperty(proposalId) &&
-      proposals[proposalId].genesisProtocolData.state != "ExpiredInQueue" &&
-      proposals[proposalId].genesisProtocolData.state != "Executed" &&
-      proposals[proposalId].toSimulate
-    ) {
+  for (var i = 0; i < activeProposals.length; i++) {
+    if (proposals[activeProposals[i]].toSimulate) {
       console.log(
         "Proposal",
-        proposalId,
+        activeProposals[i],
         "in",
-        schemesInfo[proposals[proposalId].scheme].name,
+        schemesInfo[proposals[activeProposals[i]].scheme].name,
         "active to simulate \n",
-        proposals[proposalId].toSimulate
+        proposals[activeProposals[i]].toSimulate
       );
     }
-  })
+  }
 
   DXdaoSnapshot.schemesInfo = schemesInfo;
   DXdaoSnapshot.proposals = proposals;
