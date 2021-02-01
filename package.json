@@ -4,9 +4,9 @@
   "description": "Scripts to generate snapshotDBs of DXdao",
   "main": "index.js",
   "scripts": {
-    "transactions": "node scripts/get-transactions.js -network mainnet -fast",
-    "snapshot": "node scripts/build-snapshot.js -network mainnet",
-    "compile": "cross-env NODE_OPTIONS=--max-old-space-size=4096 npx truffle compile",
+    "transactions": "cross-env NODE_OPTIONS=--max-old-space-size=4096 npx hardhat run --network mainnet scripts/get-transactions.js",
+    "snapshot": "cross-env NODE_OPTIONS=--max-old-space-size=4096 npx hardhat run --network mainnet scripts/build-snapshot.js",
+    "compile": "cross-env NODE_OPTIONS=--max-old-space-size=4096 npx hardhat compile",
     "start": "npm run compile && npm run transactions && npm run snapshot"
   },
   "repository": {
@@ -28,5 +28,9 @@
     "truffle": "^5.1.26",
     "web3": "^1.2.7"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@nomiclabs/hardhat-truffle5": "^2.0.0",
+    "@nomiclabs/hardhat-web3": "^2.0.0",
+    "hardhat": "^2.0.8"
+  }
 }

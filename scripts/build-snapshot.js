@@ -1,97 +1,36 @@
 const fs = require("fs");
-const Web3 = require("web3");
+const hre = require("hardhat");
+const web3 = hre.web3;
 const { Contracts, ZWeb3 } = require("@openzeppelin/upgrades");
 var _ = require("lodash");
 const args = process.argv;
 require("dotenv").config();
 
-// Get network to use from arguments
-let network,
-  web3,
-  reset = false,
-  fast = false;
-for (var i = 0; i < args.length; i++) {
-  if (args[i] == "-network") network = args[i + 1];
-  if (args[i] == "-reset") reset = true;
-  if (args[i] == "-fast") fast = true;
-}
-if (!network) throw "Not network selected, --network parameter missing";
-
-const sleep = (ms) =>
-  new Promise((resolve) => setTimeout(resolve, fast ? 0 : ms));
-
-const EtherscanAPIToken = process.env.KEY_ETHERSCAN;
-const httpProviderUrl = `https://${network}.infura.io/v3/${process.env.KEY_INFURA_API_KEY}`;
-
-console.log("Running information script on", httpProviderUrl);
-const provider = new Web3.providers.HttpProvider(httpProviderUrl);
-web3 = new Web3(provider);
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const EtherscanAPIToken = process.env.KEY_ETHERSCAN
+const BlockCyperEtherscanToken = process.env.KEY_BLOCKCYPHER
+console.log('Running information script on', hre.network.config.url)
 ZWeb3.initialize(web3.currentProvider);
 
-const DxController = Contracts.getFromLocal("DxController");
-const DxAvatar = Contracts.getFromLocal("DxAvatar");
-const DxReputation = Contracts.getFromLocal("DxReputation");
-const DxToken = Contracts.getFromLocal("DxToken");
-const GenesisProtocol = Contracts.getFromLocal("GenesisProtocol");
-
-const DxLockMgnForRep = Contracts.getFromLocal("DxLockMgnForRep");
-const DxGenAuction4Rep = Contracts.getFromLocal("DxGenAuction4Rep");
-const DxLockEth4Rep = Contracts.getFromLocal("DxLockEth4Rep");
-const DxLockWhitelisted4Rep = Contracts.getFromLocal("DxLockWhitelisted4Rep");
-const DutchXScheme = Contracts.getFromLocal("DutchXScheme");
-const SchemeRegistrar = Contracts.getFromLocal("SchemeRegistrar");
-const ContributionReward = Contracts.getFromLocal("ContributionReward");
-const EnsPublicProviderScheme = Contracts.getFromLocal(
-  "EnsPublicProviderScheme"
-);
-const EnsRegistrarScheme = Contracts.getFromLocal("EnsRegistrarScheme");
-const EnsRegistryScheme = Contracts.getFromLocal("EnsRegistryScheme");
-const TokenRegistry = Contracts.getFromLocal("TokenRegistry");
+const DxController = artifacts.require('DxController');
+const DxAvatar = artifacts.require('DxAvatar');
+const DxReputation = artifacts.require('DxReputation');
+const DxToken = artifacts.require('DxToken');
+const GenesisProtocol = artifacts.require('contracts/GenesisProtocol.sol:GenesisProtocol');
+const DxLockMgnForRep = artifacts.require('DxLockMgnForRep');
+const DxGenAuction4Rep = artifacts.require('DxGenAuction4Rep');
+const DxLockEth4Rep = artifacts.require('DxLockEth4Rep');
+const DxLockWhitelisted4Rep = artifacts.require('DxLockWhitelisted4Rep');
+const DutchXScheme = artifacts.require('DutchXScheme');
+const SchemeRegistrar = artifacts.require('SchemeRegistrar');
+const ContributionReward = artifacts.require('ContributionReward');
+const EnsPublicProviderScheme = artifacts.require('EnsPublicProviderScheme');
+const EnsRegistrarScheme = artifacts.require('EnsRegistrarScheme');
+const EnsRegistryScheme = artifacts.require('EnsRegistryScheme');
+const TokenRegistry = artifacts.require('TokenRegistry');
+const GenericSchemeMultiCall = artifacts.require('GenericSchemeMultiCall');
 
 const contracts = require("../contracts.json");
-const dxController = DxController.at(contracts.DxController);
-const dxAvatar = DxAvatar.at(contracts.DxAvatar);
-const dxReputation = DxReputation.at(contracts.DxReputation);
-const dxToken = DxToken.at(contracts.DxToken);
-const genesisProtocol = GenesisProtocol.at(contracts.GenesisProtocol);
-
-let schemes = {};
-schemes[contracts.schemes.DxLockMgnForRep] = DxLockMgnForRep.at(
-  contracts.schemes.DxLockMgnForRep
-);
-schemes[contracts.schemes.DxGenAuction4Rep] = DxGenAuction4Rep.at(
-  contracts.schemes.DxGenAuction4Rep
-);
-schemes[contracts.schemes.DxLockEth4Rep] = DxLockEth4Rep.at(
-  contracts.schemes.DxLockEth4Rep
-);
-schemes[contracts.schemes.DxLockWhitelisted4Rep] = DxLockWhitelisted4Rep.at(
-  contracts.schemes.DxLockWhitelisted4Rep
-);
-schemes[contracts.schemes.DutchXScheme] = DutchXScheme.at(
-  contracts.schemes.DutchXScheme
-);
-schemes[contracts.schemes.SchemeRegistrar] = SchemeRegistrar.at(
-  contracts.schemes.SchemeRegistrar
-);
-schemes[contracts.schemes.ContributionReward] = ContributionReward.at(
-  contracts.schemes.ContributionReward
-);
-schemes[contracts.schemes.EnsPublicProviderScheme] = EnsPublicProviderScheme.at(
-  contracts.schemes.EnsPublicProviderScheme
-);
-schemes[contracts.schemes.EnsRegistrarScheme] = EnsRegistrarScheme.at(
-  contracts.schemes.EnsRegistrarScheme
-);
-schemes[contracts.schemes.EnsRegistryScheme] = EnsRegistryScheme.at(
-  contracts.schemes.EnsRegistryScheme
-);
-schemes[contracts.schemes.TokenRegistry] = TokenRegistry.at(
-  contracts.schemes.TokenRegistry
-);
-schemes[contracts.schemes.EnsPublicResolverScheme] = EnsPublicProviderScheme.at(
-  contracts.schemes.EnsPublicResolverScheme
-);
 const schemeNames = _.invert(contracts.schemes);
 
 let DXdaoTransactions;
@@ -104,17 +43,67 @@ if (fs.existsSync("./DXdaoTransactions.json")) {
 }
 
 // Fecth existent snapshot
-let DXdaoSnapshot = {
+let DXdaoSnapshotTemplate = {
   schemesInfo: {},
   proposals: {},
-  activeProposals: {}
+  activeProposals: []
 }
-if (fs.existsSync("./DXdaoSnapshot.json") && !reset)
-  DXdaoSnapshot = JSON.parse(fs.readFileSync("DXdaoSnapshot.json", "utf-8"));
+// Fecth existent snapshot file
+let DXdaoSnapshot = DXdaoSnapshotTemplate;
+  if (fs.existsSync('./DXdaoSnapshot.json'))
+    DXdaoSnapshot = Object.assign(DXdaoSnapshotTemplate, JSON.parse(fs.readFileSync('DXdaoSnapshot.json', 'utf-8')));
 
 async function main() {
+  
+  // Instantiate contracts
+  const dxController = await DxController.at(contracts.DxController);
+  const dxAvatar = await DxAvatar.at(contracts.DxAvatar);
+  const dxReputation = await DxReputation.at(contracts.DxReputation);
+  const dxToken = await DxToken.at(contracts.DxToken);
+  const genesisProtocol = await GenesisProtocol.at(contracts.GenesisProtocol);
+  let schemes = {};
+  schemes[contracts.schemes.DxLockMgnForRep] = await DxLockMgnForRep.at(contracts.schemes.DxLockMgnForRep);
+  schemes[contracts.schemes.DxGenAuction4Rep] = await DxGenAuction4Rep.at(contracts.schemes.DxGenAuction4Rep);
+  schemes[contracts.schemes.DxLockEth4Rep] = await DxLockEth4Rep.at(contracts.schemes.DxLockEth4Rep);
+  schemes[contracts.schemes.DxLockWhitelisted4Rep] = await DxLockWhitelisted4Rep.at(contracts.schemes.DxLockWhitelisted4Rep);
+  schemes[contracts.schemes.DutchXScheme] = await DutchXScheme.at(contracts.schemes.DutchXScheme);
+  schemes[contracts.schemes.SchemeRegistrar] = await SchemeRegistrar.at(contracts.schemes.SchemeRegistrar);
+  schemes[contracts.schemes.ContributionReward] = await ContributionReward.at(contracts.schemes.ContributionReward);
+  schemes[contracts.schemes.EnsPublicProviderScheme] = await EnsPublicProviderScheme.at(contracts.schemes.EnsPublicProviderScheme);
+  schemes[contracts.schemes.EnsRegistrarScheme] = await EnsRegistrarScheme.at(contracts.schemes.EnsRegistrarScheme);
+  schemes[contracts.schemes.EnsRegistryScheme] = await EnsRegistryScheme.at(contracts.schemes.EnsRegistryScheme);
+  schemes[contracts.schemes.GenericSchemeMultiCall] = await GenericSchemeMultiCall.at(contracts.schemes.GenericSchemeMultiCall);
+  schemes[contracts.schemes.TokenRegistry] = await TokenRegistry.at(contracts.schemes.TokenRegistry);
+  schemes[contracts.schemes.EnsPublicResolverScheme] = await EnsPublicProviderScheme.at(contracts.schemes.EnsPublicResolverScheme);
+  
+  // Set last confirmed block as toBlock
   const fromBlock = DXdaoTransactions.fromBlock;
   const toBlock = DXdaoTransactions.toBlock;
+  
+  const createProposalEvents = [
+    "NewContributionProposal",
+    "NewCallProposal",
+    "NewMultiCallProposal",
+    "NewSchemeProposal",
+    "RemoveSchemeProposal",
+  ];
+  const endProposalEvents = [
+    "ExecuteProposal",
+    "ProposalDeleted",
+    "ProposalExecuted",
+    "ProposalExecutedByVotingMachine",
+    "CancelProposal",
+  ];
+  const ProposalState = [
+    "None",
+    "ExpiredInQueue",
+    "Executed",
+    "Queued",
+    "PreBoosted",
+    "Boosted",
+    "QuietEndingPeriod",
+  ];
+  const WinningVoteState = ["NONE", "YES", "NO"];
 
   console.log("Generating snapshot from block", fromBlock, "to block", toBlock);
 
@@ -142,17 +131,13 @@ async function main() {
   history.internalTxs = history.internalTxs.concat(
     DXdaoTransactions.token.internalTxs
   );
-  history.internalTxs = history.internalTxs.concat(
-    DXdaoTransactions.genesisProtocol.internalTxs
-  );
+  history.internalTxs = history.internalTxs.concat(DXdaoTransactions.genesisProtocol.internalTxs);
 
   history.events = history.events.concat(DXdaoTransactions.controller.events);
   history.events = history.events.concat(DXdaoTransactions.avatar.events);
   history.events = history.events.concat(DXdaoTransactions.reputation.events);
   history.events = history.events.concat(DXdaoTransactions.token.events);
-  history.events = history.events.concat(
-    DXdaoTransactions.genesisProtocol.events
-  );
+  history.events = history.events.concat(DXdaoTransactions.genesisProtocol.events);
 
   for (var schemeAddress in DXdaoTransactions.schemes) {
     if (DXdaoTransactions.schemes.hasOwnProperty(schemeAddress)) {
@@ -171,23 +156,8 @@ async function main() {
   history.txs = _.sortBy(history.txs, "transactionIndex");
   history.txs = _.sortBy(history.txs, "blockNumber");
 
-  history.internalTxs = _.uniqBy(history.internalTxs, "transactionHash");
   history.internalTxs = _.sortBy(history.internalTxs, "transactionIndex");
   history.internalTxs = _.sortBy(history.internalTxs, "blockNumber");
-
-  const createProposalEvents = [
-    "NewContributionProposal",
-    "NewCallProposal",
-    "NewSchemeProposal",
-    "RemoveSchemeProposal",
-  ];
-  const endProposalEvents = [
-    "ExecuteProposal",
-    "ProposalDeleted",
-    "ProposalExecuted",
-    "ProposalExecutedByVotingMachine",
-    "CancelProposal",
-  ];
 
   history.events = _.sortBy(history.events, "logIndex");
   history.events = _.sortBy(history.events, "blockNumber");
@@ -250,13 +220,13 @@ async function main() {
     delete schemeAddedBlock[registeredSchemes[i]];
   }
 
+  let schemesInfo = DXdaoSnapshot.schemesInfo;
+  let proposals = DXdaoSnapshot.proposals;
+  let activeProposals = DXdaoSnapshot.activeProposals;
+  
   // TO DO: check schemeAddedBlock is empty object
-
-  let schemesInfo = {};
   for (var i = 0; i < registeredSchemes.length; i++) {
-    const scheme = await dxController.methods
-      .schemes(registeredSchemes[i])
-      .call();
+    const scheme = await dxController.schemes(registeredSchemes[i]);
 
     let activePeriods = schemesActivePeriods.filter((period) => {
       return period.address == registeredSchemes[i];
@@ -277,29 +247,26 @@ async function main() {
     };
 
     // TO DO: Add analysis of global constrains of each scheme
-
-    schemesInfo[registeredSchemes[i]] = {
-      name: schemes[registeredSchemes[i]]
-        ? schemeNames[registeredSchemes[i]]
-        : "UnregisteredScheme",
-      paramsHash: scheme.paramsHash,
-      permissions: permissions,
-      activePeriods: activePeriods,
-      activeProposals: [],
-    };
+    if (!schemesInfo[registeredSchemes[i]])
+      schemesInfo[registeredSchemes[i]] = {
+        name: schemes[registeredSchemes[i]]
+          ? schemeNames[registeredSchemes[i]]
+          : "UnregisteredScheme",
+        paramsHash: scheme.paramsHash,
+        permissions: permissions,
+        activePeriods: activePeriods,
+        activeProposals: [],
+      };
   }
-  let proposals = {};
-  let activeProposals = [];
-  history.events.forEach((historyEvent) => {
-    if (createProposalEvents.indexOf(historyEvent.event) >= 0) {
-      if (proposals[historyEvent.returnValues._proposalId])
-        console.error(
-          "Proposal",
-          historyEvent.returnValues._proposalId,
-          " already added !"
-        );
+  const schemesEvents = _.filter(history.events, function(o) { return schemeNames[o.address] });
+  schemesEvents.forEach((historyEvent) => {
+    if (
+      createProposalEvents.indexOf(historyEvent.event) >= 0
+      && activeProposals.indexOf(historyEvent.returnValues._proposalId) < 0
+      && !proposals[historyEvent.returnValues._proposalId]
+    ) {
       const proposalInfo = {
-        contractName: schemes[historyEvent.address].schema.contractName,
+        contractName: schemeNames[historyEvent.address],
         event: historyEvent,
         blockNumber: historyEvent.blockNumber,
         txHash: historyEvent.transactionHash,
@@ -322,31 +289,12 @@ async function main() {
           activeProposals.indexOf(historyEvent.returnValues._proposalId),
           1
         );
-
-      if (
-        schemesInfo[historyEvent.address].activeProposals.indexOf(
-          historyEvent.returnValues._proposalId
-        ) >= 0
-      )
+      if (schemesInfo[historyEvent.address].activeProposals.indexOf(historyEvent.returnValues._proposalId) >= 0)
         schemesInfo[historyEvent.address].activeProposals.splice(
-          schemesInfo[historyEvent.address].activeProposals.indexOf(
-            historyEvent.returnValues._proposalId
-          ),
-          1
+          schemesInfo[historyEvent.address].activeProposals.indexOf(historyEvent.returnValues._proposalId), 1
         );
     }
   });
-
-  const ProposalState = [
-    "None",
-    "ExpiredInQueue",
-    "Executed",
-    "Queued",
-    "PreBoosted",
-    "Boosted",
-    "QuietEndingPeriod",
-  ];
-  const WinningVoteState = ["NONE", "YES", "NO"];
 
   function removeNumberKeys(object) {
     for (var key in object) {
@@ -357,58 +305,118 @@ async function main() {
     return JSON.parse(JSON.stringify(object));
   }
 
-  for (var proposalId in proposals) {
-    if (proposals.hasOwnProperty(proposalId)) {
-      console.log("Getting information of proposal", proposalId);
-      proposals[proposalId].genesisProtocolData = removeNumberKeys(
-        await genesisProtocol.methods.proposals(proposalId).call()
-      );
-      proposals[proposalId].genesisProtocolData.state =
-        ProposalState[proposals[proposalId].genesisProtocolData.state];
-      proposals[proposalId].genesisProtocolData.winningVote =
-        WinningVoteState[proposals[proposalId].genesisProtocolData.winningVote];
-      if (
-        schemes[proposals[proposalId].scheme].methods.organizationsProposals
-      ) {
-        proposals[proposalId].proposalData = removeNumberKeys(
-          await schemes[proposals[proposalId].scheme].methods
-            .organizationsProposals(dxAvatar.address, proposalId)
-            .call()
-        );
-      } else if (
-        schemes[proposals[proposalId].scheme].methods.organizationProposals
-      ) {
-        proposals[proposalId].proposalData = removeNumberKeys(
-          await schemes[proposals[proposalId].scheme].methods
-            .organizationProposals(proposalId)
-            .call()
-        );
-      }
-      if (schemes[proposals[proposalId].scheme].methods.contractToCall) {
-        proposals[proposalId].contractToCall = await schemes[
-          proposals[proposalId].scheme
-        ].methods
-          .contractToCall()
-          .call();
-      }
-      if (proposals[proposalId].proposalData.callData) {
-        proposals[proposalId].toSimulate = {
-          to: dxController.address,
-          from: proposals[proposalId].scheme,
-          data: await dxController.methods
-            .genericCall(
-              proposals[proposalId].contractToCall,
-              proposals[proposalId].proposalData.callData,
-              dxAvatar.address,
-              proposals[proposalId].proposalData.value
-            )
-            .encodeABI(),
-          value: proposals[proposalId].proposalData.value,
-        };
-      }
-    }
-  }
+  let proposalsIds = Object.keys(proposals), proposalsIdsChunkIndex = 0;
+  const proposalsToCheck = proposalsIds.filter((proposalId)=> {
+    return (!proposals[proposalId].genesisProtocolData || activeProposals.indexOf(proposalId) >= 0)
+  })
+  while(proposalsToCheck.length) {
+    const proposalsIdsChunk = proposalsToCheck.splice(0,10);
+    await Promise.all(
+      proposalsIdsChunk.map(async (proposalId,index)=> {
+        let keepTrying;
+        do {
+          try {
+            console.log("Getting information of proposal", proposalId, (proposalsIdsChunkIndex*10)+index+1)
+            proposals[proposalId].genesisProtocolData = removeNumberKeys(
+              await genesisProtocol.proposals(proposalId)
+            );
+            proposals[proposalId].genesisProtocolData.state =
+              ProposalState[proposals[proposalId].genesisProtocolData.state];
+            proposals[proposalId].genesisProtocolData.winningVote =
+              WinningVoteState[proposals[proposalId].genesisProtocolData.winningVote];
+            if (schemes[proposals[proposalId].scheme].organizationsProposals) {
+              proposals[proposalId].proposalData = removeNumberKeys(
+                await schemes[proposals[proposalId].scheme].organizationsProposals(dxAvatar.address, proposalId)
+              );
+            } else if (schemes[proposals[proposalId].scheme].organizationProposals) {
+              proposals[proposalId].proposalData = removeNumberKeys(
+                await schemes[proposals[proposalId].scheme].organizationProposals(proposalId)
+              );
+            } else if (schemes[proposals[proposalId].scheme].proposals) {
+              proposals[proposalId].proposalData = removeNumberKeys(
+                await schemes[proposals[proposalId].scheme].proposals(proposalId)
+              );
+            }
+            if (schemes[proposals[proposalId].scheme].contractToCall) {
+              proposals[proposalId].contractToCall = await schemes[
+                proposals[proposalId].scheme
+              ].contractToCall();
+            }
+            if (proposals[proposalId].scheme == contracts.schemes.GenericSchemeMultiCall) {
+              proposals[proposalId].toSimulate = [];
+              for (var i = 0; i < proposals[proposalId].event.returnValues._contractsToCall.length; i++)
+                proposals[proposalId].toSimulate.push({
+                  to: dxController.address,
+                  from: proposals[proposalId].scheme,
+                  data: web3.eth.abi.encodeFunctionCall({
+                    name: 'genericCall',
+                    type: 'function',
+                    inputs: [{
+                        type: 'address',
+                        name: '_contract'
+                    },{
+                        type: 'bytes',
+                        name: '_data'
+                    },{
+                        type: 'address',
+                        name: '_avatar'
+                    },{
+                        type: 'uint256',
+                        name: '_value'
+                    }]
+                  }, [
+                    proposals[proposalId].event.returnValues._contractsToCall[i],
+                    proposals[proposalId].event.returnValues._callsData[i],
+                    dxAvatar.address,
+                    proposals[proposalId].event.returnValues._values[i]
+                  ]),
+                  value: 0,
+                });
+            } else if (proposals[proposalId].contractToCall && proposals[proposalId].proposalData.callData) {
+              proposals[proposalId].toSimulate = {
+                to: dxController.address,
+                from: proposals[proposalId].scheme,
+                data: web3.eth.abi.encodeFunctionCall({
+                  name: 'genericCall',
+                  type: 'function',
+                  inputs: [{
+                      type: 'address',
+                      name: '_contract'
+                  },{
+                      type: 'bytes',
+                      name: '_data'
+                  },{
+                      type: 'address',
+                      name: '_avatar'
+                  },{
+                      type: 'uint256',
+                      name: '_value'
+                  }]
+                }, [
+                  proposals[proposalId].contractToCall,
+                  proposals[proposalId].proposalData.callData,
+                  dxAvatar.address,
+                  proposals[proposalId].proposalData.value
+                ]),
+                value: 0,
+              };
+            }
 
+            keepTrying = false;
+          } catch(e) {
+            console.error(e);
+            console.log(
+              "Getting information of proposal", proposalId, (proposalsIdsChunkIndex*10)+index+1, 'failed... trying again.'
+            );
+            await sleep(100);
+            keepTrying = true;
+          }
+        } while (keepTrying)
+      })
+    )
+    await sleep(100);
+    proposalsIdsChunkIndex ++;
+  }
   console.log("Total proposals:\n", _.size(proposals));
   console.log("Total active proposals:\n", activeProposals.length);
   for (var schemeAddress in schemesInfo) {
@@ -426,20 +434,15 @@ async function main() {
     }
   }
 
-  for (var proposalId in proposals) {
-    if (
-      proposals.hasOwnProperty(proposalId) &&
-      proposals[proposalId].genesisProtocolData.state != "ExpiredInQueue" &&
-      proposals[proposalId].genesisProtocolData.state != "Executed" &&
-      proposals[proposalId].toSimulate
-    ) {
+  for (var i = 0; i < activeProposals.length; i++) {
+    if (proposals[activeProposals[i]].toSimulate) {
       console.log(
-        "Generic proposal",
-        proposalId,
+        "Proposal",
+        activeProposals[i],
         "in",
-        schemesInfo[proposals[proposalId].scheme].name,
+        schemesInfo[proposals[activeProposals[i]].scheme].name,
         "active to simulate \n",
-        proposals[proposalId].toSimulate
+        proposals[activeProposals[i]].toSimulate
       );
     }
   }
@@ -448,11 +451,7 @@ async function main() {
   DXdaoSnapshot.proposals = proposals;
   DXdaoSnapshot.activeProposals = activeProposals;
 
-  fs.writeFileSync(
-    "DXdaoSnapshot.json",
-    JSON.stringify(DXdaoSnapshot, null, 2),
-    { encoding: "utf8", flag: "w" }
-  );
+  fs.writeFileSync("DXdaoSnapshot.json", JSON.stringify(DXdaoSnapshot, null, 2), { encoding: "utf8", flag: "w" });
 }
 
 Promise.all([main()]).then(process.exit);

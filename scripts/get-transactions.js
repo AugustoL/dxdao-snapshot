@@ -1,105 +1,67 @@
 const fs = require('fs');
-const Web3 = require('web3');
+const hre = require("hardhat");
+const web3 = hre.web3;
 const { Contracts, ZWeb3 } = require('@openzeppelin/upgrades');
 var _ = require('lodash');
-const args = process.argv;
 require('dotenv').config();
 const http = require('http');
 const https = require('https');
 const ethDecoder = require("@maticnetwork/eth-decoder");
 
 // Get network to use from arguments
-let network, web3, reset=false, fast=false, toBlock='latest';
-for (var i = 0; i < args.length; i++) {
-  if (args[i] == '-network')
-    network = args[i+1];
-  if (args[i] == '-reset')
-    reset = true;
-  if (args[i] == '-fast')
-    fast = true;
-  if (args[i] == '-toBlock')
-    toBlock = args[i+1];
-}
-if (!network) throw('Not network selected, --network parameter missing');
+let network = hre.network.name;
 
-const sleep = ms => new Promise(resolve => setTimeout(resolve,  (fast) ? 0 : ms));
-
-const EtherscanAPIToken = process.env.KEY_ETHERSCAN
-const BlockCyperEtherscanToken = process.env.KEY_BLOCKCYPHER
-const httpProviderUrl = `https://${network}.infura.io/v3/${process.env.KEY_INFURA_API_KEY }`
-
-console.log('Running information script on', httpProviderUrl)
-const provider = new Web3.providers.HttpProvider(httpProviderUrl);
-web3 = new Web3(provider)
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const EtherscanAPIToken = process.env.KEY_ETHERSCAN;
+const BlockCyperEtherscanToken = process.env.KEY_BLOCKCYPHER;
+console.log('Running transactions script on', hre.network.config.url)
 ZWeb3.initialize(web3.currentProvider);
 
-const DxController = Contracts.getFromLocal('DxController');
-const DxAvatar = Contracts.getFromLocal('DxAvatar');
-const DxReputation = Contracts.getFromLocal('DxReputation');
-const DxToken = Contracts.getFromLocal('DxToken');
-const GenesisProtocol = Contracts.getFromLocal('GenesisProtocol');
-const DxLockMgnForRep = Contracts.getFromLocal('DxLockMgnForRep');
-const DxGenAuction4Rep = Contracts.getFromLocal('DxGenAuction4Rep');
-const DxLockEth4Rep = Contracts.getFromLocal('DxLockEth4Rep');
-const DxLockWhitelisted4Rep = Contracts.getFromLocal('DxLockWhitelisted4Rep');
-const DutchXScheme = Contracts.getFromLocal('DutchXScheme');
-const SchemeRegistrar = Contracts.getFromLocal('SchemeRegistrar');
-const ContributionReward = Contracts.getFromLocal('ContributionReward');
-const EnsPublicProviderScheme = Contracts.getFromLocal('EnsPublicProviderScheme');
-const EnsRegistrarScheme = Contracts.getFromLocal('EnsRegistrarScheme');
-const EnsRegistryScheme = Contracts.getFromLocal('EnsRegistryScheme');
-const TokenRegistry = Contracts.getFromLocal('TokenRegistry');
+const DxController = artifacts.require('DxController');
+const DxAvatar = artifacts.require('DxAvatar');
+const DxReputation = artifacts.require('DxReputation');
+const DxToken = artifacts.require('DxToken');
+const GenesisProtocol = artifacts.require('contracts/GenesisProtocol.sol:GenesisProtocol');
+const DxLockMgnForRep = artifacts.require('DxLockMgnForRep');
+const DxGenAuction4Rep = artifacts.require('DxGenAuction4Rep');
+const DxLockEth4Rep = artifacts.require('DxLockEth4Rep');
+const DxLockWhitelisted4Rep = artifacts.require('DxLockWhitelisted4Rep');
+const DutchXScheme = artifacts.require('DutchXScheme');
+const SchemeRegistrar = artifacts.require('SchemeRegistrar');
+const ContributionReward = artifacts.require('ContributionReward');
+const EnsPublicProviderScheme = artifacts.require('EnsPublicProviderScheme');
+const EnsRegistrarScheme = artifacts.require('EnsRegistrarScheme');
+const EnsRegistryScheme = artifacts.require('EnsRegistryScheme');
+const TokenRegistry = artifacts.require('TokenRegistry');
+const GenericSchemeMultiCall = artifacts.require('GenericSchemeMultiCall');
 
 const logDecoder = new ethDecoder.default.LogDecoder(
   [
-    DxController.schema.abi,
-    DxAvatar.schema.abi,
-    DxReputation.schema.abi,
-    DxToken.schema.abi,
-    GenesisProtocol.schema.abi,
-    DxLockMgnForRep.schema.abi,
-    DxGenAuction4Rep.schema.abi,
-    DxLockEth4Rep.schema.abi,
-    DxLockWhitelisted4Rep.schema.abi,
-    DutchXScheme.schema.abi,
-    SchemeRegistrar.schema.abi,
-    ContributionReward.schema.abi,
-    EnsPublicProviderScheme.schema.abi,
-    EnsRegistrarScheme.schema.abi,
-    EnsRegistryScheme.schema.abi,
-    TokenRegistry.schema.abi
+    DxController._json.abi,
+    DxAvatar._json.abi,
+    DxReputation._json.abi,
+    DxToken._json.abi,
+    GenesisProtocol._json.abi,
+    DxLockMgnForRep._json.abi,
+    DxGenAuction4Rep._json.abi,
+    DxLockEth4Rep._json.abi,
+    DxLockWhitelisted4Rep._json.abi,
+    DutchXScheme._json.abi,
+    SchemeRegistrar._json.abi,
+    ContributionReward._json.abi,
+    EnsPublicProviderScheme._json.abi,
+    EnsRegistrarScheme._json.abi,
+    EnsRegistryScheme._json.abi,
+    GenericSchemeMultiCall._json.abi,
+    TokenRegistry._json.abi
   ]
 );
 
 const contracts = require('../contracts.json');
-const dxController = DxController.at(contracts.DxController);
-const dxAvatar = DxAvatar.at(contracts.DxAvatar);
-const dxReputation = DxReputation.at(contracts.DxReputation);
-const dxToken = DxToken.at(contracts.DxToken);
-const genesisProtocol = DxToken.at(contracts.GenesisProtocol);
-
-let schemes = {};
-schemes[contracts.schemes.DxLockMgnForRep] = DxLockMgnForRep.at(contracts.schemes.DxLockMgnForRep);
-schemes[contracts.schemes.DxGenAuction4Rep] = DxGenAuction4Rep.at(contracts.schemes.DxGenAuction4Rep);
-schemes[contracts.schemes.DxLockEth4Rep] = DxLockEth4Rep.at(contracts.schemes.DxLockEth4Rep);
-schemes[contracts.schemes.DxLockWhitelisted4Rep] = DxLockWhitelisted4Rep.at(contracts.schemes.DxLockWhitelisted4Rep);
-schemes[contracts.schemes.DutchXScheme] = DutchXScheme.at(contracts.schemes.DutchXScheme);
-schemes[contracts.schemes.SchemeRegistrar] = SchemeRegistrar.at(contracts.schemes.SchemeRegistrar);
-schemes[contracts.schemes.ContributionReward] = ContributionReward.at(contracts.schemes.ContributionReward);
-schemes[contracts.schemes.EnsPublicProviderScheme] = EnsPublicProviderScheme.at(contracts.schemes.EnsPublicProviderScheme);
-schemes[contracts.schemes.EnsRegistrarScheme] = EnsRegistrarScheme.at(contracts.schemes.EnsRegistrarScheme);
-schemes[contracts.schemes.EnsRegistryScheme] = EnsRegistryScheme.at(contracts.schemes.EnsRegistryScheme);
-schemes[contracts.schemes.TokenRegistry] = TokenRegistry.at(contracts.schemes.TokenRegistry);
-schemes[contracts.schemes.EnsPublicResolverScheme] = EnsPublicProviderScheme.at(contracts.schemes.EnsPublicResolverScheme);
-
-const DXdaoSnapshotTemplate = {
-  fromBlock: 0,
-  toBlock: 0,
-};
 
 const DXdaoTransactionsTemplate = {
-  fromBlock: 0,
-  toBlock: 0,
+  fromBlock: 7850000,
+  toBlock: 7850000,
   controller: {
     txs: [],
     internalTxs: [],
@@ -127,31 +89,40 @@ const DXdaoTransactionsTemplate = {
   },
   schemes: {},
 };
-
-// Fecth existent snapshot & transaction
-let DXdaoSnapshot = DXdaoSnapshotTemplate;
-if (fs.existsSync('./DXdaoSnapshot.json') && !reset)
-  DXdaoSnapshot = Object.assign(DXdaoSnapshotTemplate, JSON.parse(fs.readFileSync('DXdaoSnapshot.json', 'utf-8')));
-
+// Fecth existent transactions file
 let DXdaoTransactions = DXdaoTransactionsTemplate;
-  if (fs.existsSync('./DXdaoTransactions.json') && !reset)
+  if (fs.existsSync('./DXdaoTransactions.json'))
     DXdaoTransactions = Object.assign(DXdaoTransactionsTemplate, JSON.parse(fs.readFileSync('DXdaoTransactions.json', 'utf-8')));
 
 async function main() {
+  
+  // Instantiate contracts
+  const dxController = await DxController.at(contracts.DxController);
+  const dxAvatar = await DxAvatar.at(contracts.DxAvatar);
+  const dxReputation = await DxReputation.at(contracts.DxReputation);
+  const dxToken = await DxToken.at(contracts.DxToken);
+  const genesisProtocol = await GenesisProtocol.at(contracts.GenesisProtocol);
+  let schemes = {};
+  schemes[contracts.schemes.DxLockMgnForRep] = await DxLockMgnForRep.at(contracts.schemes.DxLockMgnForRep);
+  schemes[contracts.schemes.DxGenAuction4Rep] = await DxGenAuction4Rep.at(contracts.schemes.DxGenAuction4Rep);
+  schemes[contracts.schemes.DxLockEth4Rep] = await DxLockEth4Rep.at(contracts.schemes.DxLockEth4Rep);
+  schemes[contracts.schemes.DxLockWhitelisted4Rep] = await DxLockWhitelisted4Rep.at(contracts.schemes.DxLockWhitelisted4Rep);
+  schemes[contracts.schemes.DutchXScheme] = await DutchXScheme.at(contracts.schemes.DutchXScheme);
+  schemes[contracts.schemes.SchemeRegistrar] = await SchemeRegistrar.at(contracts.schemes.SchemeRegistrar);
+  schemes[contracts.schemes.ContributionReward] = await ContributionReward.at(contracts.schemes.ContributionReward);
+  schemes[contracts.schemes.EnsPublicProviderScheme] = await EnsPublicProviderScheme.at(contracts.schemes.EnsPublicProviderScheme);
+  schemes[contracts.schemes.EnsRegistrarScheme] = await EnsRegistrarScheme.at(contracts.schemes.EnsRegistrarScheme);
+  schemes[contracts.schemes.EnsRegistryScheme] = await EnsRegistryScheme.at(contracts.schemes.EnsRegistryScheme);
+  schemes[contracts.schemes.GenericSchemeMultiCall] = await GenericSchemeMultiCall.at(contracts.schemes.GenericSchemeMultiCall);
+  schemes[contracts.schemes.TokenRegistry] = await TokenRegistry.at(contracts.schemes.TokenRegistry);
+  schemes[contracts.schemes.EnsPublicResolverScheme] = await EnsPublicProviderScheme.at(contracts.schemes.EnsPublicResolverScheme);
 
-  // Set last confirmed block as toBlock
+  // Set last confirmed block as toBlock is toBlock is latest
+  const toBlock = (process.env.TO_BLOCK == 'latest') ? (await web3.eth.getBlock('latest')).number : Number(process.env.TO_BLOCK);
+    
+  let fromBlock = (DXdaoTransactions.toBlock > 7850000) ? Number(DXdaoTransactions.toBlock) + 1 : 7850000;
 
-  if (toBlock == 'latest')
-    toBlock = (await web3.eth.getBlock('latest')).number;
-
-  let fromBlock = DXdaoSnapshot.toBlock + 1;
-
-  if (reset) {
-    fromBlock = 7850000;
-    DXdaoSnapshot.fromBlock = fromBlock;
-  }
-
-  DXdaoSnapshot.toBlock = toBlock;
+  DXdaoTransactions.toBlock = toBlock;
 
   console.log('Getting from block', fromBlock, 'to block', toBlock);
 
@@ -289,27 +260,58 @@ async function main() {
       let internalTxHashes = _.union(
         ...txHashesFromEachApi.map((apiHashes)=>apiHashes.internalTxHashes)
       )
-      let txs = await Promise.all(
-        txHashes.map(async (hash,index)=>{
-          await sleep(50*index);
-          console.log('Getting tx ', hash, 'for address', _address)
-          let txToPush = await web3.eth.getTransaction(hash);
-          txToPush.receipt = await web3.eth.getTransactionReceipt(hash);
-          if (txToPush.receipt.logs)
-            txToPush.receipt.logs = logDecoder.decodeLogs(txToPush.receipt.logs)
-          return txToPush
-        })
-      )
-      let internalTxs = await Promise.all(
-        internalTxHashes.map(async (hash,index)=>{
-          await sleep(50*index);
-          console.log('Getting internal tx ', hash, 'for address', _address)
-          let internalTxToPush = await web3.eth.getTransactionReceipt(hash);
-          if (internalTxToPush.logs)
-            internalTxToPush.logs = logDecoder.decodeLogs(internalTxToPush.logs)
-          return internalTxToPush
-        })
-      )
+      let txs = [], txsChunkIndex = 0;
+      while(txHashes.length) {
+          const txHashesChunk = txHashes.splice(0,100);
+          await Promise.all(
+            txHashesChunk.map(async (hash,index)=> {
+              let keepTrying, txToPush;
+              do {
+                try {
+                  console.log('Getting tx ', hash, 'for address', _address, (txsChunkIndex*100)+index)
+                  txToPush = await web3.eth.getTransactionReceipt(hash);
+                  keepTrying = false;
+                } catch {
+                  console.log(
+                    'Getting tx ', hash, 'for address', _address, (txsChunkIndex*100)+index, 'failed... trying again.'
+                  );
+                  keepTrying = true;
+                }
+              } while (keepTrying)
+              if (txToPush.logs)
+                txToPush.logs = logDecoder.decodeLogs(txToPush.logs)
+              txs.push(txToPush)
+            })
+          )
+          await sleep(5000);
+          txsChunkIndex ++;
+      }
+      let internalTxs = [], internalTxsChunkIndex = 0;
+      while(internalTxHashes.length) {
+          const internalTxHashesChunk = internalTxHashes.splice(0,100);
+          await Promise.all(
+            internalTxHashesChunk.map(async (hash,index)=> {
+              let keepTrying, internalTxToPush;
+              do {
+                try {
+                  console.log('Getting internal tx ', hash, 'for address', _address, (internalTxsChunkIndex*100)+index)
+                  internalTxToPush = await web3.eth.getTransactionReceipt(hash);
+                  keepTrying = false;
+                } catch {
+                  console.log(
+                    'Getting internal tx ', hash, 'for address', _address, (internalTxsChunkIndex*100)+index, 'failed... trying again.'
+                  );
+                  keepTrying = true;
+                }
+              } while (keepTrying)
+              if (internalTxToPush.logs)
+                internalTxToPush.logs = logDecoder.decodeLogs(internalTxToPush.logs)
+              internalTxs.push(internalTxToPush)
+            })
+          )
+          await sleep(5000);
+          internalTxsChunkIndex ++;
+      }
 
       return {txs, internalTxs}
     }
@@ -340,27 +342,41 @@ async function main() {
   transactionsFetched = await getTransactions(dxController.address, fromBlock, toBlock);
   DXdaoTransactions.controller.txs = DXdaoTransactions.controller.txs.concat(transactionsFetched.txs);
   DXdaoTransactions.controller.internalTxs = DXdaoTransactions.controller.internalTxs.concat(transactionsFetched.internalTxs);
-
+  
   console.log('Getting txs from avatar..')
   transactionsFetched = await getTransactions(dxAvatar.address, fromBlock, toBlock);
   DXdaoTransactions.avatar.txs = DXdaoTransactions.avatar.txs.concat(transactionsFetched.txs)
   DXdaoTransactions.avatar.internalTxs = DXdaoTransactions.avatar.internalTxs.concat(transactionsFetched.internalTxs)
-
+  
   console.log('Getting txs from token..')
   transactionsFetched = await getTransactions(dxToken.address, fromBlock, toBlock);
   DXdaoTransactions.token.txs = DXdaoTransactions.token.txs.concat(transactionsFetched.txs)
   DXdaoTransactions.token.internalTxs = DXdaoTransactions.token.internalTxs.concat(transactionsFetched.internalTxs)
-
+  
   console.log('Getting txs from reputation..')
   transactionsFetched = await getTransactions(dxReputation.address, fromBlock, toBlock);
   DXdaoTransactions.reputation.txs = DXdaoTransactions.reputation.txs.concat(transactionsFetched.txs)
   DXdaoTransactions.reputation.internalTxs = DXdaoTransactions.reputation.internalTxs.concat(transactionsFetched.internalTxs)
-
+  
   console.log('Getting txs from genesisProtocol..')
   transactionsFetched = await getTransactions(genesisProtocol.address, fromBlock, toBlock);
   DXdaoTransactions.genesisProtocol.txs = DXdaoTransactions.genesisProtocol.txs.concat(transactionsFetched.txs)
   DXdaoTransactions.genesisProtocol.internalTxs = DXdaoTransactions.genesisProtocol.internalTxs.concat(transactionsFetched.internalTxs)
 
+  async function getPastEvents(contract, fromBlock, toBlock) {
+    let events = [];
+    while (toBlock - fromBlock > 999999) {
+      events = events.concat(await genesisProtocol.getPastEvents(
+        'allEvents', {fromBlock: fromBlock, toBlock: fromBlock + 999999}
+      ))
+      fromBlock = fromBlock + 1000000;
+    }
+    events = events.concat(await genesisProtocol.getPastEvents(
+      'allEvents', {fromBlock: fromBlock, toBlock: toBlock}
+    ))
+    return events;
+  }
+  
   console.log('Getting events info for controller')
   DXdaoTransactions.controller.events = DXdaoTransactions.controller.events.concat( await dxController.getPastEvents(
     'allEvents', {fromBlock: fromBlock, toBlock: toBlock}
@@ -370,22 +386,21 @@ async function main() {
     'allEvents', {fromBlock: fromBlock, toBlock: toBlock}
   ));
   console.log('Getting events info for token')
-  DXdaoTransactions.token.events = DXdaoTransactions.token.events.concat( await dxToken.getPastEvents(
-    'allEvents', {fromBlock: fromBlock, toBlock: toBlock}
-  ));
+  DXdaoTransactions.token.events = DXdaoTransactions.token.events.concat(
+    await dxToken.getPastEvents('allEvents', {fromBlock: fromBlock, toBlock: toBlock})
+  );
   console.log('Getting events info for reputation')
   DXdaoTransactions.reputation.events = DXdaoTransactions.reputation.events.concat( await dxReputation.getPastEvents(
     'allEvents', {fromBlock: fromBlock, toBlock: toBlock}
   ));
   console.log('Getting events info for genesisProtocol')
-  DXdaoTransactions.genesisProtocol.events = DXdaoTransactions.genesisProtocol.events.concat( await genesisProtocol.getPastEvents(
-    'allEvents', {fromBlock: fromBlock, toBlock: toBlock}
-  ));
+  DXdaoTransactions.genesisProtocol.events = DXdaoTransactions.genesisProtocol.events.concat(
+    await getPastEvents(genesisProtocol, fromBlock, toBlock)
+  );
 
   console.log('Getting txs from schemes..')
   for (var schemeAddress in schemes) {
     console.log('Getting txs from scheme', schemeAddress);
-    await sleep(30000);
     if (schemes.hasOwnProperty(schemeAddress)) {
       transactionsFetched = await getTransactions(schemeAddress, fromBlock, toBlock);
       if (!DXdaoTransactions.schemes[schemeAddress])
@@ -402,8 +417,7 @@ async function main() {
       });
     }
   }
-
-  fs.writeFileSync('DXdaoSnapshot.json', JSON.stringify(DXdaoSnapshot, null, 2), {encoding:'utf8',flag:'w'});
+  console.log('Writing DXdaoTransactions file..');
   fs.writeFileSync('DXdaoTransactions.json', JSON.stringify(DXdaoTransactions, null, 2), {encoding:'utf8',flag:'w'});
 }
 

@@ -2,7 +2,7 @@
 
 ## Install
 ```
-npm install
+yarn
 ```
 
 And configure your .env file with your Infura and Etherscan API keys.
@@ -13,21 +13,18 @@ KEY_ETHERSCAN="xxxx"
 
 ## Commands
 
-With `npm start` it will use the default snapshot provided form the repository, get the transactions and generate the snapshot.
-
-Configure your ENV file, specify the network you want to use with the `-network` parameter and use the `-reset` parameter if you want to not use existent snapshot and restart it.
-Use the `-fast` parameter if you don't want between requests, disabled by default to avoid reaching free limit rape form APIs used.
-Use `-toBlock` with the maximum block you want to analyze parameter you want to use, using latest provided by the web3 provider by default. 
+With `yarn start` it will use the default snapshot provided form the repository, get the transactions and generate the snapshot.
+Use `TO_BLOCK` with the maximum block you want to analyze parameter you want to use, using latest provided by the web3 provider by default.
 
 ### Get Transactions
 ```
-npm run transactions
+yarn transactions
 ```
 
 ### Build Snapshopt
 
 ```
-npm run snapshot
+yarn snapshot
 ```
 
 ## Snapshot Viewer
@@ -184,3 +181,5 @@ EnsRegistry (GenericScheme): https://etherscan.io/address/0x9CEA0DD05C4344A769B2
 TokenRegistry (GenericScheme): https://etherscan.io/address/0xc072171dA83CCe311e37BC1d168f54E6A6536DF4
 
 GenericSchemeENSPublicResolver: https://etherscan.io/address/0xb3ec6089556cca49549be01ff446cf40fa81c84d
+
+GenericSchemeMulticall: https://etherscan.io/address/0xef9dC3c39CA40A2a3000ACc5ca0467CE1C250808
