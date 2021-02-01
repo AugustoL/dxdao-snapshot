@@ -346,59 +346,17 @@ async function main() {
               proposals[proposalId].toSimulate = [];
               for (var i = 0; i < proposals[proposalId].event.returnValues._contractsToCall.length; i++)
                 proposals[proposalId].toSimulate.push({
-                  to: dxController.address,
-                  from: proposals[proposalId].scheme,
-                  data: web3.eth.abi.encodeFunctionCall({
-                    name: 'genericCall',
-                    type: 'function',
-                    inputs: [{
-                        type: 'address',
-                        name: '_contract'
-                    },{
-                        type: 'bytes',
-                        name: '_data'
-                    },{
-                        type: 'address',
-                        name: '_avatar'
-                    },{
-                        type: 'uint256',
-                        name: '_value'
-                    }]
-                  }, [
-                    proposals[proposalId].event.returnValues._contractsToCall[i],
-                    proposals[proposalId].event.returnValues._callsData[i],
-                    dxAvatar.address,
-                    proposals[proposalId].event.returnValues._values[i]
-                  ]),
-                  value: 0,
+                  to: proposals[proposalId].event.returnValues._contractsToCall[i],
+                  from: dxAvatar.address,
+                  data: proposals[proposalId].event.returnValues._callsData[i],
+                  value: proposals[proposalId].event.returnValues._values[i],
                 });
             } else if (proposals[proposalId].contractToCall && proposals[proposalId].proposalData.callData) {
               proposals[proposalId].toSimulate = {
-                to: dxController.address,
-                from: proposals[proposalId].scheme,
-                data: web3.eth.abi.encodeFunctionCall({
-                  name: 'genericCall',
-                  type: 'function',
-                  inputs: [{
-                      type: 'address',
-                      name: '_contract'
-                  },{
-                      type: 'bytes',
-                      name: '_data'
-                  },{
-                      type: 'address',
-                      name: '_avatar'
-                  },{
-                      type: 'uint256',
-                      name: '_value'
-                  }]
-                }, [
-                  proposals[proposalId].contractToCall,
-                  proposals[proposalId].proposalData.callData,
-                  dxAvatar.address,
-                  proposals[proposalId].proposalData.value
-                ]),
-                value: 0,
+                to: proposals[proposalId].contractToCall,
+                from: dxAvatar.address,
+                data: proposals[proposalId].proposalData.callData,
+                value: proposals[proposalId].proposalData.value,
               };
             }
 
