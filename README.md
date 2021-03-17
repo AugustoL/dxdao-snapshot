@@ -5,10 +5,11 @@
 yarn
 ```
 
-And configure your .env file with your Infura and Etherscan API keys.
+And configure your .env file with your Infura, Etherscan and Tenderly API keys.
 ```
 KEY_INFURA_API_KEY="xxxx"
 KEY_ETHERSCAN="xxxx"
+KEY_TENDERLY="xxxx" (optional)
 ```
 
 ## Commands
