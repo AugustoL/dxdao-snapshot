@@ -5,6 +5,8 @@ const { Contracts, ZWeb3 } = require("@openzeppelin/upgrades");
 var _ = require("lodash");
 const args = process.argv;
 require("dotenv").config();
+const fetch = require('node-fetch');
+const TENDERLY_API_KEY = process.env.KEY_TENDERLY ;
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const EtherscanAPIToken = process.env.KEY_ETHERSCAN
@@ -346,59 +348,17 @@ async function main() {
               proposals[proposalId].toSimulate = [];
               for (var i = 0; i < proposals[proposalId].event.returnValues._contractsToCall.length; i++)
                 proposals[proposalId].toSimulate.push({
-                  to: dxController.address,
-                  from: proposals[proposalId].scheme,
-                  data: web3.eth.abi.encodeFunctionCall({
-                    name: 'genericCall',
-                    type: 'function',
-                    inputs: [{
-                        type: 'address',
-                        name: '_contract'
-                    },{
-                        type: 'bytes',
-                        name: '_data'
-                    },{
-                        type: 'address',
-                        name: '_avatar'
-                    },{
-                        type: 'uint256',
-                        name: '_value'
-                    }]
-                  }, [
-                    proposals[proposalId].event.returnValues._contractsToCall[i],
-                    proposals[proposalId].event.returnValues._callsData[i],
-                    dxAvatar.address,
-                    proposals[proposalId].event.returnValues._values[i]
-                  ]),
-                  value: 0,
+                  to: proposals[proposalId].event.returnValues._contractsToCall[i],
+                  from: dxAvatar.address,
+                  data: proposals[proposalId].event.returnValues._callsData[i],
+                  value: proposals[proposalId].event.returnValues._values[i],
                 });
             } else if (proposals[proposalId].contractToCall && proposals[proposalId].proposalData.callData) {
               proposals[proposalId].toSimulate = {
-                to: dxController.address,
-                from: proposals[proposalId].scheme,
-                data: web3.eth.abi.encodeFunctionCall({
-                  name: 'genericCall',
-                  type: 'function',
-                  inputs: [{
-                      type: 'address',
-                      name: '_contract'
-                  },{
-                      type: 'bytes',
-                      name: '_data'
-                  },{
-                      type: 'address',
-                      name: '_avatar'
-                  },{
-                      type: 'uint256',
-                      name: '_value'
-                  }]
-                }, [
-                  proposals[proposalId].contractToCall,
-                  proposals[proposalId].proposalData.callData,
-                  dxAvatar.address,
-                  proposals[proposalId].proposalData.value
-                ]),
-                value: 0,
+                to: proposals[proposalId].contractToCall,
+                from: dxAvatar.address,
+                data: proposals[proposalId].proposalData.callData,
+                value: proposals[proposalId].proposalData.value,
               };
             }
 
@@ -434,15 +394,62 @@ async function main() {
     }
   }
 
+  if (TENDERLY_API_KEY)
   for (var i = 0; i < activeProposals.length; i++) {
-    if (proposals[activeProposals[i]].toSimulate) {
+    if (proposals[activeProposals[i]].scheme == contracts.schemes.GenericSchemeMultiCall) {
+      console.log(proposals[activeProposals[i]].toSimulate)
+      for (var callIndex = 0; callIndex < proposals[activeProposals[i]].toSimulate.length; callIndex++) {
+        const callToExecute = proposals[activeProposals[i]].toSimulate[callIndex];
+        const simulationResponse = await fetch('https://api.tenderly.co/api/v1/account/me/project/dxdao-proposal-simulation/simulate', 
+          {
+            method: 'post',
+            body:    JSON.stringify({
+              "network_id": "1",
+              "from": callToExecute.from,
+              "to": callToExecute.to,
+              "input": callToExecute.data,
+              "gas": 1000000,
+              "gas_price": 0,
+              "value": callToExecute.value,
+              "save": true,
+          		"save_if_fails": false
+            }),
+            headers: { 'X-Access-Key': TENDERLY_API_KEY },
+          }
+        );
+        const simulationResult = await simulationResponse.json();
+        console.log(
+          "Call", callIndex, " in proposal", activeProposals[i], "in",
+          schemesInfo[proposals[activeProposals[i]].scheme].name,
+          (!simulationResult.simulation.status) ? "SIMULATION FAILED" : "simulation succeded",
+          "https://dashboard.tenderly.co/public/dxdao/dxdao-proposal-simulation/simulator/"+simulationResult.simulation.id
+        );
+      }
+    } else if (proposals[activeProposals[i]].toSimulate) {
+      const simulationResult = await fetch('https://api.tenderly.co/api/v1/account/me/project/dxdao-proposal-simulation/simulate', 
+        {
+          method: 'post',
+          body:    JSON.stringify({
+            "network_id": "1",
+            "from": proposals[activeProposals[i]].toSimulate.from,
+            "to": proposals[activeProposals[i]].toSimulate.to,
+            "input": proposals[activeProposals[i]].toSimulate.data,
+            "gas": 1000000,
+            "gas_price": 0,
+            "value": proposals[activeProposals[i]].toSimulate.value,
+            "save": true,
+            "save_if_fails": false
+          }),
+          headers: { 'X-Access-Key': TENDERLY_API_KEY },
+        }
+      )
+      .then(res => res.json())
+      .then(json => {return json});
       console.log(
-        "Proposal",
-        activeProposals[i],
-        "in",
+        "Call", c, " in proposal", activeProposals[i], "in",
         schemesInfo[proposals[activeProposals[i]].scheme].name,
-        "active to simulate \n",
-        proposals[activeProposals[i]].toSimulate
+        (!simulationResult.simulation.status) ? "SIMULATION FAILED" : "simulation succeded",
+        "https://dashboard.tenderly.co/public/dxdao/dxdao-proposal-simulation/simulator/"+simulationResult.simulation.id
       );
     }
   }
