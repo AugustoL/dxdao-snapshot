@@ -446,7 +446,7 @@ async function main() {
       .then(res => res.json())
       .then(json => {return json});
       console.log(
-        "Call", c, " in proposal", activeProposals[i], "in",
+        "Call", callIndex, " in proposal", activeProposals[i], "in",
         schemesInfo[proposals[activeProposals[i]].scheme].name,
         (!simulationResult.simulation.status) ? "SIMULATION FAILED" : "simulation succeded",
         "https://dashboard.tenderly.co/public/dxdao/dxdao-proposal-simulation/simulator/"+simulationResult.simulation.id
