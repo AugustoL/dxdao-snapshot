@@ -33,7 +33,7 @@ const TokenRegistry = artifacts.require('TokenRegistry');
 const GenericSchemeMultiCall = artifacts.require('GenericSchemeMultiCall');
 
 const contracts = require("../contracts.json");
-const schemeNames = _.invert(contracts.schemes);
+let schemeNames = _.invert(contracts.schemes);
 
 let DXdaoTransactions;
 if (fs.existsSync("./DXdaoTransactions.json")) {
@@ -77,9 +77,11 @@ async function main() {
   schemes[contracts.schemes.TokenRegistry] = await TokenRegistry.at(contracts.schemes.TokenRegistry);
   schemes[contracts.schemes.EnsPublicResolverScheme] = await EnsPublicProviderScheme.at(contracts.schemes.EnsPublicResolverScheme);
   
-  for (var i = 0; i < contracts.schemes.multicalls.length; i++)
+  for (var i = 0; i < contracts.schemes.multicalls.length; i++){
     schemes[contracts.schemes.multicalls[i]] = await GenericSchemeMultiCall.at(contracts.schemes.multicalls[i]);
-  
+    schemeNames[contracts.schemes.multicalls[i]] = "Multicall "+i;
+  }
+
   // Set last confirmed block as toBlock
   const fromBlock = DXdaoTransactions.fromBlock;
   const toBlock = DXdaoTransactions.toBlock;
@@ -382,10 +384,7 @@ async function main() {
   console.log("Total proposals:\n", _.size(proposals));
   console.log("Total active proposals:\n", activeProposals.length);
   for (var schemeAddress in schemesInfo) {
-    if (
-      schemesInfo.hasOwnProperty(schemeAddress) &&
-      schemesInfo[schemeAddress].activeProposals.length > 0
-    ) {
+    if (schemesInfo[schemeAddress].activeProposals.length > 0) {
       console.log(
         "Scheme",
         schemesInfo[schemeAddress].name,
@@ -399,7 +398,6 @@ async function main() {
   if (TENDERLY_API_KEY)
   for (var i = 0; i < activeProposals.length; i++) {
     if (contracts.schemes.multicalls.indexOf(proposals[activeProposals[i]].scheme) > -1) {
-      console.log(proposals[activeProposals[i]].toSimulate)
       for (var callIndex = 0; callIndex < proposals[activeProposals[i]].toSimulate.length; callIndex++) {
         const callToExecute = proposals[activeProposals[i]].toSimulate[callIndex];
         const simulationResponse = await fetch('https://api.tenderly.co/api/v1/account/me/project/dxdao-proposal-simulation/simulate', 

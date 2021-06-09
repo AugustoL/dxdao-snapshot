@@ -23,16 +23,8 @@ module.exports = {
       timeout: 60000
     },
     mainnet: {
-      url: `https://mainnet.infura.io/v3/${INFURA_PROJECT_ID}`
-    },
-    ropsten: {
-      url: `https://ropsten.infura.io/v3/${INFURA_PROJECT_ID}`
-    },
-    rinkeby: {
-      url: `https://rinkeby.infura.io/v3/${INFURA_PROJECT_ID}`
-    },
-    kovan: {
-      url: `https://kovan.infura.io/v3/${INFURA_PROJECT_ID}`
+      url: `https://mainnet.infura.io/v3/${INFURA_PROJECT_ID}`,
+      timeout: 60000
     }
   }
 };
