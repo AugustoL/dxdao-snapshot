@@ -113,9 +113,11 @@ async function main() {
   schemes[contracts.schemes.EnsPublicProviderScheme] = await EnsPublicProviderScheme.at(contracts.schemes.EnsPublicProviderScheme);
   schemes[contracts.schemes.EnsRegistrarScheme] = await EnsRegistrarScheme.at(contracts.schemes.EnsRegistrarScheme);
   schemes[contracts.schemes.EnsRegistryScheme] = await EnsRegistryScheme.at(contracts.schemes.EnsRegistryScheme);
-  schemes[contracts.schemes.GenericSchemeMultiCall] = await GenericSchemeMultiCall.at(contracts.schemes.GenericSchemeMultiCall);
   schemes[contracts.schemes.TokenRegistry] = await TokenRegistry.at(contracts.schemes.TokenRegistry);
   schemes[contracts.schemes.EnsPublicResolverScheme] = await EnsPublicProviderScheme.at(contracts.schemes.EnsPublicResolverScheme);
+  
+  for (var i = 0; i < contracts.schemes.multicalls.length; i++)
+    schemes[contracts.schemes.multicalls[i]] = await GenericSchemeMultiCall.at(contracts.schemes.multicalls[i]);
 
   // Set last confirmed block as toBlock is toBlock is latest
   const toBlock = (process.env.TO_BLOCK == 'latest') ? (await web3.eth.getBlock('latest')).number : Number(process.env.TO_BLOCK);
