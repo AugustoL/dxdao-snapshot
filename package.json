@@ -20,7 +20,7 @@
   },
   "homepage": "https://github.com/AugustoL/dxdao-snapshot#readme",
   "dependencies": {
-    "@maticnetwork/eth-decoder": "0.0.2",
+    "@maticnetwork/eth-decoder": "0.0.4",
     "@openzeppelin/upgrades": "^2.8.0",
     "cross-env": "^7.0.2",
     "dotenv": "^8.2.0",
